@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Polirubro Avellaneda — Ventas</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%234d8d3f'/%3E%3Cg fill='white'%3E%3Cellipse cx='50' cy='63' rx='24' ry='20'/%3E%3Cellipse cx='26' cy='38' rx='9' ry='12' transform='rotate(-18 26 38)'/%3E%3Cellipse cx='44' cy='24' rx='9' ry='12' transform='rotate(-6 44 24)'/%3E%3Cellipse cx='64' cy='24' rx='9' ry='12' transform='rotate(8 64 24)'/%3E%3Cellipse cx='79' cy='40' rx='9' ry='12' transform='rotate(20 79 40)'/%3E%3C/g%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-icon" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="48" fill="#4d8d3f" />
+      <g fill="#ffffff">
+        <ellipse cx="50" cy="63" rx="24" ry="20" />
+        <ellipse cx="26" cy="38" rx="9" ry="12" transform="rotate(-18 26 38)" />
+        <ellipse cx="44" cy="24" rx="9" ry="12" transform="rotate(-6 44 24)" />
+        <ellipse cx="64" cy="24" rx="9" ry="12" transform="rotate(8 64 24)" />
+        <ellipse cx="79" cy="40" rx="9" ry="12" transform="rotate(20 79 40)" />
+      </g>
+    </svg>
+    <div class="brand-text">
+      <span class="brand-line brand-line-1">Polirubro</span>
+      <span class="brand-line brand-line-2">Avellaneda</span>
+    </div>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab activo" data-vista="caja">Caja</button>
+    <button class="tab" data-vista="venta">Nueva venta</button>
+    <button class="tab" data-vista="productos">Productos</button>
+    <button class="tab" data-vista="categorias">Categorías</button>
+    <button class="tab" data-vista="estadisticas">Estadísticas</button>
+    <button class="tab" data-vista="ajustes">Ajustes</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- VISTA: CAJA -->
+  <section id="vista-caja" class="vista activa">
+    <div class="vista-header">
+      <h1>Caja</h1>
+      <input type="date" id="caja-fecha" class="input-fecha" />
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card stat-primaria">
+        <span class="stat-label">Total vendido</span>
+        <span class="stat-valor" id="stat-total">$0</span>
+      </div>
+      <div class="stat-card stat-acento">
+        <span class="stat-label">Ganancia del día</span>
+        <span class="stat-valor" id="stat-ganancia">$0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Ventas realizadas</span>
+        <span class="stat-valor" id="stat-cantidad">0</span>
+      </div>
+    </div>
+
+    <div class="pagos-grid">
+      <div class="pago-pill">
+        <span class="pago-label">Efectivo</span>
+        <span class="pago-valor" id="pago-efectivo">$0</span>
+      </div>
+      <div class="pago-pill">
+        <span class="pago-label">Tarjeta</span>
+        <span class="pago-valor" id="pago-tarjeta">$0</span>
+      </div>
+      <div class="pago-pill">
+        <span class="pago-label">Transferencia</span>
+        <span class="pago-valor" id="pago-transferencia">$0</span>
+      </div>
+    </div>
+
+    <div class="card-wrap">
+      <h2>Ventas del día</h2>
+      <div class="tabla-scroll">
+        <table class="tabla">
+          <thead>
+            <tr><th>Hora</th><th>Detalle</th><th>Forma de pago</th><th>Total</th><th>Ganancia</th><th></th></tr>
+          </thead>
+          <tbody id="tabla-caja">
+            <tr><td colspan="6" class="vacio">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- VISTA: NUEVA VENTA -->
+  <section id="vista-venta" class="vista">
+    <div class="vista-header"><h1>Nueva venta</h1></div>
+
+    <div class="panel-venta">
+      <div class="card-wrap form-agregar">
+        <label>Escanear código de barras</label>
+        <div class="input-icono input-icono-barras">
+          <input type="text" id="venta-codigo-barras" placeholder="Escaneá o tipeá el código y Enter" autocomplete="off" />
+        </div>
+        <p class="ayuda" id="venta-codigo-mensaje"></p>
+
+        <label>Producto</label>
+        <div class="input-icono input-icono-buscar">
+          <input type="text" id="venta-buscar" placeholder="Buscar producto…" />
+        </div>
+        <select id="venta-producto" size="6"></select>
+
+        <div id="venta-modo-wrap">
+          <label>Modalidad</label>
+          <select id="venta-modo"></select>
+
+          <div id="venta-unidad-peso" class="toggle-unidad oculto">
+            <button type="button" class="toggle-opcion activo" data-unidad="kg">Kg</button>
+            <button type="button" class="toggle-opcion" data-unidad="g">Gramos</button>
+          </div>
+
+          <label>Cantidad</label>
+          <input type="number" id="venta-cantidad" min="0" step="0.001" placeholder="0" />
+          <p class="ayuda" id="venta-preview"></p>
+        </div>
+
+        <button id="btn-agregar-item" class="btn-secundario">Agregar a la venta</button>
+      </div>
+
+      <div class="carrito-wrap">
+        <div class="tabla-scroll">
+          <table class="tabla" id="tabla-carrito">
+            <thead>
+              <tr><th>Producto</th><th>Cant.</th><th>Precio unit.</th><th>Subtotal</th><th></th></tr>
+            </thead>
+            <tbody id="carrito-items">
+              <tr><td colspan="5" class="vacio">Sin ítems todavía</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="carrito-footer">
+          <div class="forma-pago-grupo">
+            <label>Forma de pago</label>
+            <div class="toggle-unidad" id="venta-forma-pago">
+              <button type="button" class="toggle-opcion activo" data-pago="efectivo">Efectivo</button>
+              <button type="button" class="toggle-opcion" data-pago="tarjeta">Tarjeta</button>
+              <button type="button" class="toggle-opcion" data-pago="transferencia">Transferencia</button>
+            </div>
+          </div>
+          <div class="carrito-total">Total: <span id="carrito-total-valor">$0</span></div>
+        </div>
+        <button id="btn-confirmar-venta" class="btn-primario" disabled>Confirmar venta</button>
+        <p id="venta-mensaje" class="mensaje"></p>
+        <button id="btn-imprimir-ultima-venta" class="btn-secundario oculto">🖨 Imprimir ticket</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- VISTA: PRODUCTOS -->
+  <section id="vista-productos" class="vista">
+    <div class="vista-header">
+      <h1>Productos</h1>
+      <button id="btn-nuevo-producto" class="btn-primario">+ Nuevo producto</button>
+    </div>
+
+    <div class="filtros" id="filtros-categoria-productos">
+      <button class="filtro-categoria activo" data-cat="">Todas</button>
+    </div>
+
+    <div class="card-wrap">
+      <div class="tabla-scroll">
+        <table class="tabla">
+          <thead>
+            <tr><th>Producto</th><th>Categoría</th><th>Precios</th><th>Ganancia estimada</th><th></th></tr>
+          </thead>
+          <tbody id="tabla-productos">
+            <tr><td colspan="5" class="vacio">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- VISTA: CATEGORÍAS -->
+  <section id="vista-categorias" class="vista">
+    <div class="vista-header"><h1>Categorías</h1></div>
+
+    <div class="card-wrap form-categoria">
+      <input type="text" id="nueva-categoria-nombre" placeholder="Nombre de la categoría" />
+      <button id="btn-nueva-categoria" class="btn-secundario">Agregar</button>
+    </div>
+
+    <div class="card-wrap">
+      <div class="tabla-scroll">
+        <table class="tabla">
+          <thead><tr><th>Nombre</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="tabla-categorias">
+            <tr><td colspan="3" class="vacio">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- VISTA: ESTADÍSTICAS -->
+  <section id="vista-estadisticas" class="vista">
+    <div class="vista-header"><h1>Estadísticas</h1></div>
+
+    <div class="card-wrap">
+      <div class="toggle-unidad" id="estadisticas-modo-rango">
+        <button type="button" class="toggle-opcion activo" data-modo="rango">Rango de fechas</button>
+        <button type="button" class="toggle-opcion" data-modo="mes">Mes</button>
+      </div>
+
+      <div class="filtro-fechas" id="estadisticas-filtro-rango">
+        <div>
+          <label>Desde</label>
+          <input type="date" id="est-desde" />
+        </div>
+        <div>
+          <label>Hasta</label>
+          <input type="date" id="est-hasta" />
+        </div>
+      </div>
+      <div class="filtro-fechas oculto" id="estadisticas-filtro-mes">
+        <div>
+          <label>Mes</label>
+          <input type="month" id="est-mes" />
+        </div>
+      </div>
+
+      <div class="filtro-acciones">
+        <button id="btn-ver-estadisticas" class="btn-primario">Ver estadísticas</button>
+        <a id="btn-descargar-pdf" class="btn-secundario" href="#" target="_blank" rel="noopener">⬇ Descargar PDF</a>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card stat-primaria">
+        <span class="stat-label">Total vendido</span>
+        <span class="stat-valor" id="est-stat-total">$0</span>
+      </div>
+      <div class="stat-card stat-acento">
+        <span class="stat-label">Ganancia</span>
+        <span class="stat-valor" id="est-stat-ganancia">$0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Ventas realizadas</span>
+        <span class="stat-valor" id="est-stat-cantidad">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Ticket promedio</span>
+        <span class="stat-valor" id="est-stat-promedio">$0</span>
+      </div>
+    </div>
+
+    <div class="card-wrap">
+      <h2>Ventas por día</h2>
+      <div class="grafico-barras" id="est-grafico-barras"></div>
+    </div>
+
+    <div class="card-wrap">
+      <h2>Ventas por forma de pago</h2>
+      <div class="tabla-scroll">
+        <table class="tabla">
+          <thead><tr><th>Forma de pago</th><th>Ventas</th><th>Total</th></tr></thead>
+          <tbody id="est-tabla-forma-pago"><tr><td colspan="3" class="vacio">Sin datos</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card-wrap">
+      <h2>Ventas por categoría</h2>
+      <div class="tabla-scroll">
+        <table class="tabla">
+          <thead><tr><th>Categoría</th><th>Ítems</th><th>Total</th><th>Ganancia</th></tr></thead>
+          <tbody id="est-tabla-categoria"><tr><td colspan="4" class="vacio">Sin datos</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card-wrap">
+      <h2>Top 10 productos más vendidos</h2>
+      <div class="tabla-scroll">
+        <table class="tabla">
+          <thead><tr><th>Producto</th><th>Ventas</th><th>Total</th><th>Ganancia</th></tr></thead>
+          <tbody id="est-tabla-productos"><tr><td colspan="4" class="vacio">Sin datos</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- VISTA: AJUSTES -->
+  <section id="vista-ajustes" class="vista">
+    <div class="vista-header"><h1>Ajustes</h1></div>
+
+    <div class="card-wrap form-producto">
+      <p class="ayuda">Estos datos aparecen en el ticket impreso y en los reportes PDF.</p>
+      <label>Nombre del comercio</label>
+      <input type="text" id="aj-nombre" placeholder="Ej: Polirubro Avellaneda" />
+
+      <label>Dirección</label>
+      <input type="text" id="aj-direccion" placeholder="Ej: Av. Mitre 1234, Avellaneda" />
+
+      <label>Teléfono</label>
+      <input type="text" id="aj-telefono" placeholder="Ej: 11-2345-6789" />
+
+      <label>Mensaje de pie del ticket</label>
+      <input type="text" id="aj-mensaje-pie" placeholder="Ej: ¡Gracias por su compra!" />
+
+      <p id="aj-mensaje" class="mensaje"></p>
+      <button id="btn-guardar-ajustes" class="btn-primario">Guardar ajustes</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- TICKET DE IMPRESIÓN (80mm) -->
+<div id="ticket-imprimir">
+  <div class="ticket-centro">
+    <div class="ticket-nombre" id="tk-nombre">Polirubro Avellaneda</div>
+    <div id="tk-direccion"></div>
+    <div id="tk-telefono"></div>
+  </div>
+  <div class="ticket-sep"></div>
+  <div>Ticket N° <span id="tk-numero"></span></div>
+  <div id="tk-fecha"></div>
+  <div class="ticket-sep"></div>
+  <table class="ticket-tabla">
+    <thead><tr><th>Cant.</th><th>Descripción</th><th>Subt.</th></tr></thead>
+    <tbody id="tk-items"></tbody>
+  </table>
+  <div class="ticket-sep"></div>
+  <div class="ticket-total">TOTAL: <span id="tk-total"></span></div>
+  <div>Forma de pago: <span id="tk-forma-pago"></span></div>
+  <div class="ticket-sep"></div>
+  <div class="ticket-centro">
+    <div>Documento no válido como factura</div>
+    <div id="tk-mensaje-pie"></div>
+  </div>
+</div>
+
+<!-- MODAL: nuevo/editar producto -->
+<div id="modal-producto" class="modal oculto">
+  <div class="modal-contenido">
+    <button class="modal-cerrar" id="cerrar-modal">×</button>
+    <h2 id="modal-producto-titulo">Nuevo producto</h2>
+    <div class="form-producto">
+      <label>Nombre</label>
+      <input type="text" id="np-nombre" placeholder="Ej: Alimento perro adulto 20kg" />
+
+      <label>Categoría</label>
+      <select id="np-categoria"></select>
+
+      <label>Código de barras (opcional)</label>
+      <input type="text" id="np-codigo-barras" placeholder="Escaneá el código o dejalo vacío" autocomplete="off" />
+
+      <div class="bloque-modalidad">
+        <label class="chk-inline"><input type="checkbox" id="np-vende-peso" /> Vende por peso (kg / gramos)</label>
+        <div id="np-campos-peso" class="campos-modalidad oculto">
+          <div class="fila-costo-margen">
+            <div><label>Costo por kg</label><div class="input-icono input-money"><input type="number" id="np-costo-kg" step="0.01" /></div></div>
+            <div><label>Margen</label><div class="input-icono input-percent"><input type="number" id="np-margen-kg" step="1" value="35" /></div></div>
+            <div><label>Precio por kg</label><div class="input-icono input-money"><input type="number" id="np-precio-kg" step="0.01" /></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bloque-modalidad">
+        <label class="chk-inline"><input type="checkbox" id="np-vende-bolsa" /> Vende por bolsa cerrada</label>
+        <div id="np-campos-bolsa" class="campos-modalidad oculto">
+          <label>Peso de la bolsa (kg)</label>
+          <input type="number" id="np-peso-bolsa" step="0.01" placeholder="Ej: 25" />
+          <div class="fila-costo-margen">
+            <div><label>Costo por bolsa</label><div class="input-icono input-money"><input type="number" id="np-costo-bolsa" step="0.01" /></div></div>
+            <div><label>Margen</label><div class="input-icono input-percent"><input type="number" id="np-margen-bolsa" step="1" value="35" /></div></div>
+            <div><label>Precio por bolsa</label><div class="input-icono input-money"><input type="number" id="np-precio-bolsa" step="0.01" /></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bloque-modalidad">
+        <label class="chk-inline"><input type="checkbox" id="np-vende-unidad" /> Vende por unidad</label>
+        <div id="np-campos-unidad" class="campos-modalidad oculto">
+          <div class="fila-costo-margen">
+            <div><label>Costo por unidad</label><div class="input-icono input-money"><input type="number" id="np-costo-unidad" step="0.01" /></div></div>
+            <div><label>Margen</label><div class="input-icono input-percent"><input type="number" id="np-margen-unidad" step="1" value="35" /></div></div>
+            <div><label>Precio por unidad</label><div class="input-icono input-money"><input type="number" id="np-precio-unidad" step="0.01" /></div></div>
+          </div>
+        </div>
+      </div>
+
+      <p id="np-mensaje" class="mensaje"></p>
+      <button id="btn-guardar-producto" class="btn-primario">Guardar producto</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
