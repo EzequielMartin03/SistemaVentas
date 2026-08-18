@@ -12,7 +12,34 @@
 </head>
 <body>
 
-<header class="topbar">
+<!-- PANTALLA DE LOGIN -->
+<div id="pantalla-login" class="pantalla-login">
+  <div class="login-card">
+    <svg class="brand-icon" viewBox="0 0 100 100" aria-hidden="true" style="width:56px;height:56px;margin:0 auto 0.8rem;display:block;">
+      <circle cx="50" cy="50" r="48" fill="#4d8d3f" />
+      <g fill="#ffffff">
+        <ellipse cx="50" cy="63" rx="24" ry="20" />
+        <ellipse cx="26" cy="38" rx="9" ry="12" transform="rotate(-18 26 38)" />
+        <ellipse cx="44" cy="24" rx="9" ry="12" transform="rotate(-6 44 24)" />
+        <ellipse cx="64" cy="24" rx="9" ry="12" transform="rotate(8 64 24)" />
+        <ellipse cx="79" cy="40" rx="9" ry="12" transform="rotate(20 79 40)" />
+      </g>
+    </svg>
+    <h1>Polirubro Avellaneda</h1>
+    <p class="ayuda" style="text-align:center;">Ingresá con tu usuario para continuar</p>
+
+    <label>Usuario</label>
+    <input type="text" id="login-usuario" autocomplete="username" />
+
+    <label>Contraseña</label>
+    <input type="password" id="login-password" autocomplete="current-password" />
+
+    <p id="login-mensaje" class="mensaje"></p>
+    <button id="btn-login" class="btn-primario" style="width:100%;">Ingresar</button>
+  </div>
+</div>
+
+<header class="topbar oculto" id="topbar">
   <div class="brand">
     <svg class="brand-icon" viewBox="0 0 100 100" aria-hidden="true">
       <circle cx="50" cy="50" r="48" fill="#4d8d3f" />
@@ -36,11 +63,17 @@
     <button class="tab" data-vista="productos">Productos</button>
     <button class="tab" data-vista="categorias">Categorías</button>
     <button class="tab" data-vista="estadisticas">Estadísticas</button>
-    <button class="tab" data-vista="ajustes">Ajustes</button>
+    <button class="tab solo-admin" data-vista="ajustes">Ajustes</button>
+    <button class="tab solo-admin" data-vista="usuarios">Usuarios</button>
   </nav>
+
+  <div class="sesion-usuario">
+    <span id="sesion-nombre"></span>
+    <button id="btn-cerrar-sesion" class="btn-fila">Cerrar sesión</button>
+  </div>
 </header>
 
-<main>
+<main class="oculto" id="main-app">
 
   <!-- VISTA: CAJA -->
   <section id="vista-caja" class="vista activa">
@@ -316,7 +349,55 @@
     </div>
   </section>
 
+  <!-- VISTA: USUARIOS -->
+  <section id="vista-usuarios" class="vista">
+    <div class="vista-header">
+      <h1>Usuarios</h1>
+      <button id="btn-nuevo-usuario" class="btn-primario">+ Nuevo usuario</button>
+    </div>
+
+    <div class="card-wrap">
+      <div class="tabla-scroll">
+        <table class="tabla">
+          <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Último ingreso</th><th></th></tr></thead>
+          <tbody id="tabla-usuarios">
+            <tr><td colspan="6" class="vacio">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
 </main>
+
+<!-- MODAL: nuevo/editar usuario -->
+<div id="modal-usuario" class="modal oculto">
+  <div class="modal-contenido">
+    <button class="modal-cerrar" id="cerrar-modal-usuario">×</button>
+    <h2 id="modal-usuario-titulo">Nuevo usuario</h2>
+    <div class="form-producto">
+      <label>Nombre de usuario</label>
+      <input type="text" id="us-nombre-usuario" placeholder="Ej: jperez" autocomplete="off" />
+
+      <label>Nombre completo</label>
+      <input type="text" id="us-nombre-completo" placeholder="Ej: Juan Pérez" />
+
+      <label>Rol</label>
+      <select id="us-rol">
+        <option value="cajero">Cajero</option>
+        <option value="admin">Admin</option>
+      </select>
+
+      <label id="us-label-password">Contraseña (mínimo 8 caracteres)</label>
+      <input type="password" id="us-password" autocomplete="new-password" />
+
+      <label class="chk-inline"><input type="checkbox" id="us-activo" checked /> Activo</label>
+
+      <p id="us-mensaje" class="mensaje"></p>
+      <button id="btn-guardar-usuario" class="btn-primario">Guardar usuario</button>
+    </div>
+  </div>
+</div>
 
 <!-- TICKET DE IMPRESIÓN (80mm) -->
 <div id="ticket-imprimir">

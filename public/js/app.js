@@ -10,6 +10,9 @@ let productoEditandoId = null;
 let negocioConfigCache = null;
 let ultimaVentaConfirmada = null;
 let estadisticasModo = 'rango';
+let usuarioActual = null;
+let usuariosCache = [];
+let usuarioEditandoId = null;
 
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => ctx.querySelectorAll(sel);
@@ -25,6 +28,19 @@ function hoyISO() {
   return new Date(d - tz).toISOString().slice(0, 10);
 }
 
+// Si la sesión expira (o un admin desactiva al usuario) mientras está
+// usando el sistema, cualquier pedido a la API que devuelva 401 lo manda
+// de vuelta a la pantalla de login, sin tener que revisar cada fetch().
+const fetchOriginal = window.fetch.bind(window);
+window.fetch = async (...args) => {
+  const res = await fetchOriginal(...args);
+  const url = typeof args[0] === 'string' ? args[0] : args[0].url;
+  if (res.status === 401 && url.startsWith(API) && !url.includes('/auth/')) {
+    mostrarPantallaLogin();
+  }
+  return res;
+};
+
 /* ---------- NAVEGACIÓN ---------- */
 $$('.tab').forEach((tab) => {
   tab.addEventListener('click', () => activarVista(tab.dataset.vista));
@@ -39,7 +55,163 @@ function activarVista(vista) {
   if (vista === 'categorias') cargarCategorias();
   if (vista === 'estadisticas') iniciarVistaEstadisticas();
   if (vista === 'ajustes') cargarAjustes();
+  if (vista === 'usuarios') cargarUsuarios();
 }
+
+/* ---------- AUTENTICACIÓN ---------- */
+async function verificarSesion() {
+  const res = await fetch(`${API}/auth/me`);
+  if (!res.ok) {
+    mostrarPantallaLogin();
+    return;
+  }
+  usuarioActual = await res.json();
+  mostrarApp();
+}
+
+function mostrarPantallaLogin() {
+  usuarioActual = null;
+  $('#pantalla-login').classList.remove('oculto');
+  $('#topbar').classList.add('oculto');
+  $('#main-app').classList.add('oculto');
+  $('#login-password').value = '';
+  $('#login-mensaje').textContent = '';
+  $('#login-usuario').focus();
+}
+
+function mostrarApp() {
+  $('#pantalla-login').classList.add('oculto');
+  $('#topbar').classList.remove('oculto');
+  $('#main-app').classList.remove('oculto');
+  $('#sesion-nombre').textContent = `${usuarioActual.nombre_completo} (${usuarioActual.rol === 'admin' ? 'Admin' : 'Cajero'})`;
+  $$('.solo-admin').forEach((el) => el.classList.toggle('oculto', usuarioActual.rol !== 'admin'));
+  activarVista('caja');
+}
+
+$('#btn-login').addEventListener('click', intentarLogin);
+$('#login-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') intentarLogin(); });
+$('#login-usuario').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#login-password').focus(); });
+
+async function intentarLogin() {
+  const usuario = $('#login-usuario').value.trim();
+  const password = $('#login-password').value;
+  const msg = $('#login-mensaje');
+  if (!usuario || !password) {
+    msg.textContent = 'Ingresá usuario y contraseña.';
+    msg.className = 'mensaje error';
+    return;
+  }
+
+  const res = await fetch(`${API}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ usuario, password }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    msg.textContent = data.error || 'No se pudo iniciar sesión.';
+    msg.className = 'mensaje error';
+    return;
+  }
+  usuarioActual = data;
+  mostrarApp();
+}
+
+$('#btn-cerrar-sesion').addEventListener('click', async () => {
+  await fetch(`${API}/auth/logout`, { method: 'POST' });
+  mostrarPantallaLogin();
+});
+
+/* ---------- USUARIOS (solo admin) ---------- */
+async function cargarUsuarios() {
+  const res = await fetch(`${API}/usuarios`);
+  if (!res.ok) return;
+  usuariosCache = await res.json();
+  const tbody = $('#tabla-usuarios');
+  if (!usuariosCache.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="vacio">No hay usuarios.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = usuariosCache.map((u) => `
+    <tr>
+      <td>${u.nombre_usuario}</td>
+      <td>${u.nombre_completo}</td>
+      <td>${u.rol === 'admin' ? 'Admin' : 'Cajero'}</td>
+      <td>${u.activo ? 'Activo' : 'Inactivo'}</td>
+      <td>${u.ultimo_login ? new Date(u.ultimo_login).toLocaleString('es-AR') : '—'}</td>
+      <td>
+        <button class="btn-fila" data-accion="editar" data-id="${u.id}">Editar</button>
+        <button class="btn-fila ${u.activo ? 'peligro' : ''}" data-accion="toggle" data-id="${u.id}">${u.activo ? 'Desactivar' : 'Activar'}</button>
+      </td>
+    </tr>
+  `).join('');
+
+  $$('[data-accion="editar"]', tbody).forEach((btn) => {
+    btn.addEventListener('click', () => abrirModalUsuario(Number(btn.dataset.id)));
+  });
+  $$('[data-accion="toggle"]', tbody).forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const u = usuariosCache.find((x) => x.id === Number(btn.dataset.id));
+      await fetch(`${API}/usuarios/${u.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activo: !u.activo }),
+      });
+      cargarUsuarios();
+    });
+  });
+}
+
+const modalUsuario = $('#modal-usuario');
+$('#btn-nuevo-usuario').addEventListener('click', () => abrirModalUsuario(null));
+$('#cerrar-modal-usuario').addEventListener('click', () => modalUsuario.classList.add('oculto'));
+
+function abrirModalUsuario(id) {
+  usuarioEditandoId = id;
+  $('#us-mensaje').textContent = '';
+  const u = id ? usuariosCache.find((x) => x.id === id) : null;
+
+  $('#modal-usuario-titulo').textContent = u ? 'Editar usuario' : 'Nuevo usuario';
+  $('#us-nombre-usuario').value = u ? u.nombre_usuario : '';
+  $('#us-nombre-usuario').disabled = !!u;
+  $('#us-nombre-completo').value = u ? u.nombre_completo : '';
+  $('#us-rol').value = u ? u.rol : 'cajero';
+  $('#us-activo').checked = u ? u.activo : true;
+  $('#us-password').value = '';
+  $('#us-label-password').textContent = u ? 'Nueva contraseña (dejar vacío para no cambiarla)' : 'Contraseña (mínimo 8 caracteres)';
+
+  modalUsuario.classList.remove('oculto');
+}
+
+$('#btn-guardar-usuario').addEventListener('click', async () => {
+  const msg = $('#us-mensaje');
+  const body = {
+    nombre_usuario: $('#us-nombre-usuario').value.trim(),
+    nombre_completo: $('#us-nombre-completo').value.trim(),
+    rol: $('#us-rol').value,
+    activo: $('#us-activo').checked,
+  };
+  if ($('#us-password').value) body.password = $('#us-password').value;
+
+  const url = usuarioEditandoId ? `${API}/usuarios/${usuarioEditandoId}` : `${API}/usuarios`;
+  const method = usuarioEditandoId ? 'PUT' : 'POST';
+
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    msg.textContent = (data.errores || [data.error]).join(' ');
+    msg.className = 'mensaje error';
+    return;
+  }
+  msg.textContent = 'Usuario guardado.';
+  msg.className = 'mensaje ok';
+  setTimeout(() => modalUsuario.classList.add('oculto'), 500);
+  cargarUsuarios();
+});
 
 /* ---------- CONFIGURACIÓN DEL NEGOCIO (compartido) ---------- */
 async function obtenerConfiguracion() {
@@ -765,4 +937,4 @@ $('#btn-guardar-ajustes').addEventListener('click', async () => {
 });
 
 /* ---------- INICIO ---------- */
-cargarCaja();
+verificarSesion();

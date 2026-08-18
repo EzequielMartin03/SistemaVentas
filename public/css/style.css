@@ -33,7 +33,7 @@ body {
 
 /* INPUTS — estado base + foco consistente en todo el sistema */
 input[type="text"], input[type="number"], input[type="date"], input[type="month"],
-input[type="tel"], select {
+input[type="tel"], input[type="password"], select {
   font-family: var(--font-body);
   font-size: 0.9rem;
   padding: 0.6rem 0.7rem;
@@ -45,7 +45,7 @@ input[type="tel"], select {
   outline: none;
 }
 input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus,
-input[type="month"]:focus, input[type="tel"]:focus, select:focus {
+input[type="month"]:focus, input[type="tel"]:focus, input[type="password"]:focus, select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(77, 141, 63, 0.15);
 }
@@ -102,6 +102,53 @@ input:disabled, select:disabled { opacity: 0.55; cursor: not-allowed; }
 }
 .tab:hover { background: var(--primary-soft); color: var(--primary-dark); }
 .tab.activo { background: var(--primary); color: #fff; }
+
+.sesion-usuario {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+#sesion-nombre { font-weight: 600; color: var(--text); }
+
+/* LOGIN */
+.pantalla-login {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 1rem;
+}
+.login-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2rem;
+  width: min(380px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.login-card h1 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  text-align: center;
+  margin: 0 0 0.2rem;
+}
+.login-card label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-soft);
+  margin-top: 0.7rem;
+}
+.login-card input { width: 100%; }
 
 main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
 
