@@ -1,9 +1,12 @@
 {
   "name": "forraje-stock",
   "version": "1.0.0",
-  "description": "Sistema de stock para forrajería (alimento por bolsa/kg, limpieza y veterinaria)",
+  "description": "Sistema de ventas Polirubro Avellaneda (balanceado por kg/bolsa, limpieza, veterinaria y varios)",
   "main": "src/server.js",
   "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",

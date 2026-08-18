@@ -1,12 +1,20 @@
 const { Pool } = require('pg');
 
-const pool = new Pool({
-  host: process.env.PGHOST,
-  port: process.env.PGPORT ? Number(process.env.PGPORT) : 5432,
-  user: process.env.PGUSER,
-  password: process.env.PGPASSWORD,
-  database: process.env.PGDATABASE,
-});
+// DATABASE_URL (Neon, Render, Railway, etc.) trae host/user/password/db en
+// una sola cadena y requiere SSL. En local seguimos usando las variables
+// PG* sueltas del .env, sin SSL.
+const pool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    })
+  : new Pool({
+      host: process.env.PGHOST,
+      port: process.env.PGPORT ? Number(process.env.PGPORT) : 5432,
+      user: process.env.PGUSER,
+      password: process.env.PGPASSWORD,
+      database: process.env.PGDATABASE,
+    });
 
 // El local opera en Argentina: NOW()/CURRENT_DATE deben reflejar ese huso
 // horario sin importar en qué servidor/zona corra Postgres, para que "el
