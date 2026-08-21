@@ -104,8 +104,27 @@ window.fetch = async (...args) => {
 
 /* ---------- NAVEGACIÓN ---------- */
 $$('.tab').forEach((tab) => {
-  tab.addEventListener('click', () => activarVista(tab.dataset.vista));
+  tab.addEventListener('click', () => {
+    activarVista(tab.dataset.vista);
+    cerrarMenuMovil();
+  });
 });
+
+function abrirMenuMovil() {
+  $('#topbar').classList.add('menu-abierto');
+  $('#menu-movil-fondo').classList.remove('oculto');
+  $('#btn-menu-movil').setAttribute('aria-expanded', 'true');
+}
+function cerrarMenuMovil() {
+  $('#topbar').classList.remove('menu-abierto');
+  $('#menu-movil-fondo').classList.add('oculto');
+  $('#btn-menu-movil').setAttribute('aria-expanded', 'false');
+}
+$('#btn-menu-movil').addEventListener('click', () => {
+  if ($('#topbar').classList.contains('menu-abierto')) cerrarMenuMovil();
+  else abrirMenuMovil();
+});
+$('#menu-movil-fondo').addEventListener('click', cerrarMenuMovil);
 
 function activarVista(vista) {
   $$('.tab').forEach((t) => t.classList.toggle('activo', t.dataset.vista === vista));
