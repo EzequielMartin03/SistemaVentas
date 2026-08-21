@@ -65,6 +65,24 @@ function confirmarAccion(mensaje, opciones = {}) {
   });
 }
 
+// Overlay grande de "cargando" para acciones que tardan y son importantes
+// (ej: aplicar cambios de precio) — más visible que el spinner del botón.
+function mostrarCargaGrande(texto) {
+  $('#cg-texto-cargando').textContent = texto;
+  $('#cg-estado-cargando').classList.remove('oculto');
+  $('#cg-estado-exito').classList.add('oculto');
+  $('#modal-carga-grande').classList.remove('oculto');
+}
+function mostrarExitoCargaGrande(mensaje) {
+  $('#cg-texto-exito').textContent = mensaje;
+  $('#cg-estado-cargando').classList.add('oculto');
+  $('#cg-estado-exito').classList.remove('oculto');
+}
+function cerrarCargaGrande() {
+  $('#modal-carga-grande').classList.add('oculto');
+}
+$('#cg-btn-cerrar').addEventListener('click', cerrarCargaGrande);
+
 function hoyISO() {
   const d = new Date();
   const tz = d.getTimezoneOffset() * 60000;
@@ -1040,7 +1058,6 @@ $('#btn-previsualizar-precios').addEventListener('click', async (e) => {
 
 $('#btn-aplicar-precios').addEventListener('click', async (e) => {
   if (!preciosUltimaConsulta) return;
-  const boton = e.currentTarget; // se guarda antes del await: el evento ya no es válido después
   const ok = await confirmarAccion(
     'Los precios de la vista previa se van a actualizar ahora mismo. Esta acción no se puede deshacer automáticamente.',
     { titulo: 'Aplicar cambios de precio', textoConfirmar: 'Sí, aplicar cambios' }
@@ -1048,24 +1065,24 @@ $('#btn-aplicar-precios').addEventListener('click', async (e) => {
   if (!ok) return;
 
   const msg = $('#precios-mensaje');
-  await conCarga(boton, 'Aplicando…', async () => {
-    const res = await fetch(`${API}/productos/actualizar-precios`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...preciosUltimaConsulta, confirmar: true }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      msg.textContent = data.error || 'No se pudieron aplicar los cambios.';
-      msg.className = 'mensaje error';
-      return;
-    }
-    $('#precios-resultado-wrap').classList.add('oculto');
-    preciosUltimaConsulta = null;
-    await iniciarVistaPrecios();
-    msg.textContent = `Listo — se actualizaron ${data.cantidad_productos} producto(s).`;
-    msg.className = 'mensaje ok';
+  mostrarCargaGrande('Actualizando precios…');
+
+  const res = await fetch(`${API}/productos/actualizar-precios`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...preciosUltimaConsulta, confirmar: true }),
   });
+  const data = await res.json();
+  if (!res.ok) {
+    cerrarCargaGrande();
+    msg.textContent = data.error || 'No se pudieron aplicar los cambios.';
+    msg.className = 'mensaje error';
+    return;
+  }
+  $('#precios-resultado-wrap').classList.add('oculto');
+  preciosUltimaConsulta = null;
+  await iniciarVistaPrecios();
+  mostrarExitoCargaGrande(`Se actualizaron ${data.cantidad_productos} producto(s) correctamente.`);
 });
 
 /* ---------- ETIQUETAS DE PRECIO ---------- */

@@ -642,6 +642,23 @@
   </div>
 </div>
 
+<!-- MODAL: carga grande (usado al aplicar cambios de precio) -->
+<div id="modal-carga-grande" class="modal oculto">
+  <div class="modal-contenido modal-chico carga-grande">
+    <div id="cg-estado-cargando">
+      <div class="carga-spinner-grande"></div>
+      <p class="carga-grande-texto" id="cg-texto-cargando">Actualizando…</p>
+      <p class="ayuda">Puede tardar unos segundos, no cierres esta ventana.</p>
+    </div>
+    <div id="cg-estado-exito" class="oculto">
+      <div class="venta-exito-icono">✓</div>
+      <h2>¡Listo!</h2>
+      <p class="mc-mensaje" id="cg-texto-exito"></p>
+      <button id="cg-btn-cerrar" class="btn-primario" style="width:100%;">Aceptar</button>
+    </div>
+  </div>
+</div>
+
 <!-- TICKET DE IMPRESIÓN (80mm) -->
 <div id="ticket-imprimir">
   <div class="ticket-centro">
