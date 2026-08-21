@@ -130,7 +130,7 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     const {
-      nombre, categoria_id, codigo_barras = null, proveedor_id = null,
+      nombre, categoria_id, codigo_barras = null, proveedor_id = null, marca = null,
       vende_por_peso = false, costo_kg = null, margen_kg = 35,
       vende_por_bolsa = false, peso_bolsa_kg = null, costo_bolsa = null, margen_bolsa = 35,
       vende_por_unidad = false, costo_unidad = null, margen_unidad = 35,
@@ -148,14 +148,14 @@ router.post('/', async (req, res, next) => {
 
     const { rows } = await pool.query(
       `INSERT INTO productos (
-        nombre, categoria_id, codigo_barras, proveedor_id,
+        nombre, categoria_id, codigo_barras, proveedor_id, marca,
         vende_por_peso, costo_kg, margen_kg, precio_kg,
         vende_por_bolsa, peso_bolsa_kg, costo_bolsa, margen_bolsa, precio_bolsa,
         vende_por_unidad, costo_unidad, margen_unidad, precio_unidad
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
       RETURNING *`,
       [
-        nombre.trim(), categoria_id, codigo_barras || null, proveedor_id || null,
+        nombre.trim(), categoria_id, codigo_barras || null, proveedor_id || null, (marca || '').trim() || null,
         vende_por_peso, costo_kg, margen_kg, precio_kg,
         vende_por_bolsa, peso_bolsa_kg, costo_bolsa, margen_bolsa, precio_bolsa,
         vende_por_unidad, costo_unidad, margen_unidad, precio_unidad,
@@ -194,9 +194,10 @@ router.put('/:id', async (req, res, next) => {
 
     merged.codigo_barras = merged.codigo_barras || null;
     merged.proveedor_id = merged.proveedor_id || null;
+    merged.marca = (merged.marca || '').toString().trim() || null;
 
     const campos = [
-      'nombre', 'categoria_id', 'codigo_barras', 'proveedor_id',
+      'nombre', 'categoria_id', 'codigo_barras', 'proveedor_id', 'marca',
       'vende_por_peso', 'costo_kg', 'margen_kg', 'precio_kg',
       'vende_por_bolsa', 'peso_bolsa_kg', 'costo_bolsa', 'margen_bolsa', 'precio_bolsa',
       'vende_por_unidad', 'costo_unidad', 'margen_unidad', 'precio_unidad',
@@ -205,12 +206,12 @@ router.put('/:id', async (req, res, next) => {
 
     const { rows } = await pool.query(
       `UPDATE productos SET
-        nombre=$1, categoria_id=$2, codigo_barras=$3, proveedor_id=$4,
-        vende_por_peso=$5, costo_kg=$6, margen_kg=$7, precio_kg=$8,
-        vende_por_bolsa=$9, peso_bolsa_kg=$10, costo_bolsa=$11, margen_bolsa=$12, precio_bolsa=$13,
-        vende_por_unidad=$14, costo_unidad=$15, margen_unidad=$16, precio_unidad=$17,
-        activo=$18, actualizado_en=NOW()
-      WHERE id=$19 RETURNING *`,
+        nombre=$1, categoria_id=$2, codigo_barras=$3, proveedor_id=$4, marca=$5,
+        vende_por_peso=$6, costo_kg=$7, margen_kg=$8, precio_kg=$9,
+        vende_por_bolsa=$10, peso_bolsa_kg=$11, costo_bolsa=$12, margen_bolsa=$13, precio_bolsa=$14,
+        vende_por_unidad=$15, costo_unidad=$16, margen_unidad=$17, precio_unidad=$18,
+        activo=$19, actualizado_en=NOW()
+      WHERE id=$20 RETURNING *`,
       [...campos.map((c) => merged[c]), req.params.id]
     );
     res.json(rows[0]);
@@ -228,31 +229,40 @@ const MODALIDADES_PRECIO = {
   unidad: { habilitado: 'vende_por_unidad', precio: 'precio_unidad', costo: 'costo_unidad', margen: 'margen_unidad', etiqueta: 'Precio por unidad' },
 };
 
+const AMBITOS_VALIDOS = ['todos', 'categoria', 'proveedor', 'marca', 'seleccion'];
+const METODOS_VALIDOS = ['porcentaje', 'monto_fijo', 'manual', 'costo_margen'];
+
 // POST /api/productos/actualizar-precios
 // Con confirmar=false (o ausente) solo calcula y devuelve la previsualización,
 // sin tocar la base. Con confirmar=true aplica los cambios en una transacción.
 router.post('/actualizar-precios', async (req, res, next) => {
   try {
     const {
-      ambito, categoria_id, proveedor_id, producto_id,
-      modalidades, metodo, tipo, porcentaje, precio_manual,
+      ambito, categoria_id, proveedor_id, marca, producto_ids,
+      modalidades, metodo, tipo, porcentaje, monto, precio_manual,
       confirmar,
     } = req.body;
 
-    if (!['todos', 'categoria', 'proveedor', 'producto'].includes(ambito)) {
+    if (!AMBITOS_VALIDOS.includes(ambito)) {
       return res.status(400).json({ error: 'Elegí a qué productos aplicar el cambio.' });
     }
     if (!Array.isArray(modalidades) || !modalidades.length || modalidades.some((m) => !MODALIDADES_PRECIO[m])) {
       return res.status(400).json({ error: 'Elegí al menos una modalidad de precio (peso, bolsa o unidad).' });
     }
-    if (!['porcentaje', 'manual'].includes(metodo)) {
-      return res.status(400).json({ error: 'Elegí el método: porcentaje o precio manual.' });
+    if (!METODOS_VALIDOS.includes(metodo)) {
+      return res.status(400).json({ error: 'Elegí cómo cambiar el precio.' });
     }
-    if (metodo === 'manual' && (ambito !== 'producto' || modalidades.length !== 1)) {
-      return res.status(400).json({ error: 'El precio manual solo se puede aplicar a un producto y una sola modalidad a la vez.' });
+
+    const idsSeleccion = Array.isArray(producto_ids) ? producto_ids.filter((v) => Number.isInteger(v) && v > 0) : [];
+    if (metodo === 'manual' && (ambito !== 'seleccion' || idsSeleccion.length !== 1 || modalidades.length !== 1)) {
+      return res.status(400).json({ error: 'El precio manual solo se puede aplicar eligiendo un único producto y una sola modalidad.' });
     }
     if (metodo === 'porcentaje') {
       if (!(Number(porcentaje) > 0)) return res.status(400).json({ error: 'Indicá un porcentaje mayor a 0.' });
+      if (!['aumento', 'descuento'].includes(tipo)) return res.status(400).json({ error: 'Indicá si es aumento o descuento.' });
+    }
+    if (metodo === 'monto_fijo') {
+      if (!(Number(monto) > 0)) return res.status(400).json({ error: 'Indicá un monto mayor a 0.' });
       if (!['aumento', 'descuento'].includes(tipo)) return res.status(400).json({ error: 'Indicá si es aumento o descuento.' });
     }
     if (metodo === 'manual' && !(Number(precio_manual) > 0)) {
@@ -269,10 +279,14 @@ router.post('/actualizar-precios', async (req, res, next) => {
       if (!proveedor_id) return res.status(400).json({ error: 'Elegí un proveedor.' });
       params.push(proveedor_id);
       condiciones.push(`proveedor_id = $${params.length}`);
-    } else if (ambito === 'producto') {
-      if (!producto_id) return res.status(400).json({ error: 'Elegí un producto.' });
-      params.push(producto_id);
-      condiciones.push(`id = $${params.length}`);
+    } else if (ambito === 'marca') {
+      if (!marca) return res.status(400).json({ error: 'Elegí una marca.' });
+      params.push(marca);
+      condiciones.push(`marca = $${params.length}`);
+    } else if (ambito === 'seleccion') {
+      if (!idsSeleccion.length) return res.status(400).json({ error: 'Elegí al menos un producto.' });
+      params.push(idsSeleccion);
+      condiciones.push(`id = ANY($${params.length})`);
     }
 
     const dbClient = confirmar ? await pool.connect() : pool;
@@ -285,16 +299,25 @@ router.post('/actualizar-precios', async (req, res, next) => {
       );
 
       const items = [];
+      let omitidos = 0;
       for (const producto of productos) {
         for (const modalidad of modalidades) {
           const campos = MODALIDADES_PRECIO[modalidad];
           if (!producto[campos.habilitado]) continue;
 
           const precioActual = Number(producto[campos.precio]);
+          const costoActual = producto[campos.costo] !== null ? Number(producto[campos.costo]) : null;
           let precioNuevo;
+
           if (metodo === 'porcentaje') {
             const factor = tipo === 'aumento' ? 1 + Number(porcentaje) / 100 : 1 - Number(porcentaje) / 100;
             precioNuevo = Math.max(0, Number((precioActual * factor).toFixed(2)));
+          } else if (metodo === 'monto_fijo') {
+            const delta = tipo === 'aumento' ? Number(monto) : -Number(monto);
+            precioNuevo = Math.max(0, Number((precioActual + delta).toFixed(2)));
+          } else if (metodo === 'costo_margen') {
+            if (costoActual === null || !(Number(producto[campos.margen]) >= 0)) { omitidos++; continue; }
+            precioNuevo = Number((costoActual * (1 + Number(producto[campos.margen]) / 100)).toFixed(2));
           } else {
             precioNuevo = Number(Number(precio_manual).toFixed(2));
           }
@@ -309,9 +332,8 @@ router.post('/actualizar-precios', async (req, res, next) => {
           });
 
           if (confirmar) {
-            const costo = producto[campos.costo] !== null ? Number(producto[campos.costo]) : null;
-            const margenNuevo = costo && costo > 0
-              ? Number((((precioNuevo - costo) / costo) * 100).toFixed(2))
+            const margenNuevo = costoActual && costoActual > 0
+              ? Number((((precioNuevo - costoActual) / costoActual) * 100).toFixed(2))
               : producto[campos.margen];
             await dbClient.query(
               `UPDATE productos SET ${campos.precio} = $1, ${campos.margen} = $2, actualizado_en = NOW() WHERE id = $3`,
@@ -326,6 +348,7 @@ router.post('/actualizar-precios', async (req, res, next) => {
       res.json({
         aplicado: !!confirmar,
         cantidad_productos: new Set(items.map((i) => i.producto_id)).size,
+        omitidos,
         items,
       });
     } catch (err) {

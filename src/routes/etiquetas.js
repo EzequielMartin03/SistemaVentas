@@ -7,7 +7,7 @@ const router = express.Router();
 // GET /api/etiquetas/pdf?ambito=todos|categoria|proveedor|seleccion&categoria_id=&proveedor_id=&ids=1,2,3
 router.get('/pdf', async (req, res, next) => {
   try {
-    const { ambito, categoria_id, proveedor_id, ids } = req.query;
+    const { ambito, categoria_id, proveedor_id, marca, ids } = req.query;
     const condiciones = ['activo = TRUE'];
     const params = [];
 
@@ -19,6 +19,10 @@ router.get('/pdf', async (req, res, next) => {
       if (!proveedor_id) return res.status(400).json({ error: 'Elegí un proveedor.' });
       params.push(proveedor_id);
       condiciones.push(`proveedor_id = $${params.length}`);
+    } else if (ambito === 'marca') {
+      if (!marca) return res.status(400).json({ error: 'Elegí una marca.' });
+      params.push(marca);
+      condiciones.push(`marca = $${params.length}`);
     } else if (ambito === 'seleccion') {
       const idsArray = (ids || '').split(',').map((v) => Number(v)).filter((v) => Number.isInteger(v) && v > 0);
       if (!idsArray.length) return res.status(400).json({ error: 'Elegí al menos un producto.' });

@@ -295,6 +295,26 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
 .btn-fila:hover { border-color: var(--primary); color: var(--primary-dark); }
 .btn-fila.peligro:hover { border-color: var(--danger); color: var(--danger); }
 
+/* Spinner de carga dentro de un botón: se usa mientras una acción está
+   esperando respuesta del servidor (guardar, confirmar venta, etc.), para
+   que no parezca que el sistema quedó colgado. */
+.spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  vertical-align: -2px;
+  margin-right: 0.45rem;
+  animation: girar 0.6s linear infinite;
+}
+.btn-secundario .spinner, .btn-fila .spinner {
+  border-color: rgba(56, 107, 45, 0.25);
+  border-top-color: var(--primary-dark);
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+
 /* FILTERS */
 .filtros { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .filtro-categoria {
@@ -334,7 +354,7 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
 #venta-producto option { padding: 0.4rem; }
 .ayuda { font-size: 0.8rem; color: var(--text-soft); min-height: 1.1rem; margin: 0.3rem 0 0; }
 
-.toggle-unidad { display: flex; gap: 0.4rem; margin-top: 0.3rem; }
+.toggle-unidad { display: flex; gap: 0.4rem; margin-top: 0.3rem; flex-wrap: wrap; }
 .toggle-opcion {
   font-family: var(--font-body);
   font-size: 0.82rem;
@@ -345,8 +365,62 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
   padding: 0.4rem 0.8rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
+.toggle-opcion:hover:not(.activo):not(:disabled) { border-color: var(--primary); color: var(--primary-dark); }
 .toggle-opcion.activo { background: var(--primary); border-color: var(--primary); color: #fff; }
+.toggle-opcion:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Checkbox estilizado como "pill" (selección múltiple visualmente
+   consistente con los toggles de opción única) */
+.chk-pill-input { position: absolute; opacity: 0; width: 0; height: 0; }
+.chk-pill {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  color: var(--text-soft);
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.chk-pill:hover { border-color: var(--primary); color: var(--primary-dark); }
+.chk-pill-input:checked + .chk-pill { background: var(--primary); border-color: var(--primary); color: #fff; }
+.chk-pill-input:focus-visible + .chk-pill { box-shadow: 0 0 0 3px rgba(77, 141, 63, 0.25); }
+.grupo-chk-pill { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.4rem; }
+
+/* Sección numerada ("paso a paso") dentro de una tarjeta */
+.paso { margin-top: 1.3rem; }
+.paso:first-child { margin-top: 0; }
+.paso-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+.paso-numero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.paso-separador { border: none; border-top: 1px solid var(--border); margin: 1.3rem 0; }
 
 .carrito-wrap { display: flex; flex-direction: column; }
 .carrito-footer {

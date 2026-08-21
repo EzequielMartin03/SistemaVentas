@@ -24,6 +24,21 @@ function money(n) {
   return '$' + num.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
+// Deshabilita el botón y le muestra un spinner mientras `fn` está en curso,
+// para que una acción que tarda (el server gratis puede tardar en
+// responder) no parezca que el sistema quedó colgado.
+async function conCarga(boton, textoCargando, fn) {
+  const textoOriginal = boton.innerHTML;
+  boton.disabled = true;
+  boton.innerHTML = `<span class="spinner"></span>${textoCargando}`;
+  try {
+    return await fn();
+  } finally {
+    boton.disabled = false;
+    boton.innerHTML = textoOriginal;
+  }
+}
+
 function hoyISO() {
   const d = new Date();
   const tz = d.getTimezoneOffset() * 60000;
@@ -114,19 +129,21 @@ async function intentarLogin() {
     return;
   }
 
-  const res = await fetch(`${API}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ usuario, password }),
+  await conCarga($('#btn-login'), 'Ingresando…', async () => {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.textContent = data.error || 'No se pudo iniciar sesión.';
+      msg.className = 'mensaje error';
+      return;
+    }
+    usuarioActual = data;
+    mostrarApp();
   });
-  const data = await res.json();
-  if (!res.ok) {
-    msg.textContent = data.error || 'No se pudo iniciar sesión.';
-    msg.className = 'mensaje error';
-    return;
-  }
-  usuarioActual = data;
-  mostrarApp();
 }
 
 $('#btn-cerrar-sesion').addEventListener('click', async () => {
@@ -195,7 +212,7 @@ function abrirModalUsuario(id) {
   modalUsuario.classList.remove('oculto');
 }
 
-$('#btn-guardar-usuario').addEventListener('click', async () => {
+$('#btn-guardar-usuario').addEventListener('click', async (e) => {
   const msg = $('#us-mensaje');
   const body = {
     nombre_usuario: $('#us-nombre-usuario').value.trim(),
@@ -208,21 +225,23 @@ $('#btn-guardar-usuario').addEventListener('click', async () => {
   const url = usuarioEditandoId ? `${API}/usuarios/${usuarioEditandoId}` : `${API}/usuarios`;
   const method = usuarioEditandoId ? 'PUT' : 'POST';
 
-  const res = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+  await conCarga(e.currentTarget, 'Guardando…', async () => {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.textContent = (data.errores || [data.error]).join(' ');
+      msg.className = 'mensaje error';
+      return;
+    }
+    msg.textContent = 'Usuario guardado.';
+    msg.className = 'mensaje ok';
+    setTimeout(() => modalUsuario.classList.add('oculto'), 500);
+    cargarUsuarios();
   });
-  const data = await res.json();
-  if (!res.ok) {
-    msg.textContent = (data.errores || [data.error]).join(' ');
-    msg.className = 'mensaje error';
-    return;
-  }
-  msg.textContent = 'Usuario guardado.';
-  msg.className = 'mensaje ok';
-  setTimeout(() => modalUsuario.classList.add('oculto'), 500);
-  cargarUsuarios();
 });
 
 /* ---------- CONFIGURACIÓN DEL NEGOCIO (compartido) ---------- */
@@ -490,27 +509,30 @@ $$('#venta-forma-pago .toggle-opcion').forEach((btn) => {
   });
 });
 
-$('#btn-confirmar-venta').addEventListener('click', async () => {
+$('#btn-confirmar-venta').addEventListener('click', async (e) => {
   const msg = $('#venta-mensaje');
   const items = carrito.map(({ producto_id, modo_venta, cantidad }) => ({ producto_id, modo_venta, cantidad }));
-  const res = await fetch(`${API}/ventas`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ forma_pago: formaPagoSeleccionada, items }),
+
+  await conCarga(e.currentTarget, 'Registrando venta…', async () => {
+    const res = await fetch(`${API}/ventas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ forma_pago: formaPagoSeleccionada, items }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.textContent = data.error || 'No se pudo registrar la venta.';
+      msg.className = 'mensaje error';
+      return;
+    }
+    msg.textContent = `Venta #${data.id} registrada — Total ${money(data.total)}, ganancia ${money(data.ganancia_total)}.`;
+    msg.className = 'mensaje ok';
+    ultimaVentaConfirmada = data;
+    $('#btn-imprimir-ultima-venta').classList.remove('oculto');
+    carrito = [];
+    renderCarrito();
+    $('#venta-codigo-barras').focus();
   });
-  const data = await res.json();
-  if (!res.ok) {
-    msg.textContent = data.error || 'No se pudo registrar la venta.';
-    msg.className = 'mensaje error';
-    return;
-  }
-  msg.textContent = `Venta #${data.id} registrada — Total ${money(data.total)}, ganancia ${money(data.ganancia_total)}.`;
-  msg.className = 'mensaje ok';
-  ultimaVentaConfirmada = data;
-  $('#btn-imprimir-ultima-venta').classList.remove('oculto');
-  carrito = [];
-  renderCarrito();
-  $('#venta-codigo-barras').focus();
 });
 
 $('#btn-imprimir-ultima-venta').addEventListener('click', () => {
@@ -643,10 +665,16 @@ async function poblarSelectProveedoresModal(seleccionarId) {
   sel.value = seleccionarId || '';
 }
 
+function poblarListaMarcasDatalist() {
+  const marcas = [...new Set(productosCache.map((p) => p.marca).filter(Boolean))].sort();
+  $('#lista-marcas').innerHTML = marcas.map((m) => `<option value="${m}"></option>`).join('');
+}
+
 async function abrirModalProducto(id) {
   productoEditandoId = id;
   limpiarFormularioProducto();
   await Promise.all([poblarSelectCategoriasModal(), poblarSelectProveedoresModal()]);
+  poblarListaMarcasDatalist();
 
   if (id) {
     const p = productosCache.find((x) => x.id === id) || await (await fetch(`${API}/productos/${id}`)).json();
@@ -655,6 +683,7 @@ async function abrirModalProducto(id) {
     $('#np-categoria').value = p.categoria_id;
     $('#np-codigo-barras').value = p.codigo_barras || '';
     $('#np-proveedor').value = p.proveedor_id || '';
+    $('#np-marca').value = p.marca || '';
 
     $('#np-vende-peso').checked = p.vende_por_peso;
     $('#np-costo-kg').value = p.costo_kg ?? '';
@@ -714,7 +743,7 @@ autocalcularPrecio('#np-costo-kg', '#np-margen-kg', '#np-precio-kg');
 autocalcularPrecio('#np-costo-bolsa', '#np-margen-bolsa', '#np-precio-bolsa');
 autocalcularPrecio('#np-costo-unidad', '#np-margen-unidad', '#np-precio-unidad');
 
-$('#btn-guardar-producto').addEventListener('click', async () => {
+$('#btn-guardar-producto').addEventListener('click', async (e) => {
   const vendePeso = $('#np-vende-peso').checked;
   const vendeBolsa = $('#np-vende-bolsa').checked;
   const vendeUnidad = $('#np-vende-unidad').checked;
@@ -726,6 +755,7 @@ $('#btn-guardar-producto').addEventListener('click', async () => {
     categoria_id: Number($('#np-categoria').value),
     codigo_barras: $('#np-codigo-barras').value.trim() || null,
     proveedor_id: $('#np-proveedor').value ? Number($('#np-proveedor').value) : null,
+    marca: $('#np-marca').value.trim() || null,
 
     vende_por_peso: vendePeso,
     costo_kg: vendePeso ? numOrNull('#np-costo-kg') : null,
@@ -748,29 +778,33 @@ $('#btn-guardar-producto').addEventListener('click', async () => {
   const url = productoEditandoId ? `${API}/productos/${productoEditandoId}` : `${API}/productos`;
   const method = productoEditandoId ? 'PUT' : 'POST';
 
-  const res = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
+  await conCarga(e.currentTarget, 'Guardando…', async () => {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
 
-  if (!res.ok) {
-    msg.textContent = (data.errores || [data.error]).join(' ');
-    msg.className = 'mensaje error';
-    return;
-  }
-  msg.textContent = 'Producto guardado.';
-  msg.className = 'mensaje ok';
-  setTimeout(() => modal.classList.add('oculto'), 500);
-  cargarProductos();
+    if (!res.ok) {
+      msg.textContent = (data.errores || [data.error]).join(' ');
+      msg.className = 'mensaje error';
+      return;
+    }
+    msg.textContent = 'Producto guardado.';
+    msg.className = 'mensaje ok';
+    setTimeout(() => modal.classList.add('oculto'), 500);
+    cargarProductos();
+  });
 });
 
 /* ---------- ACTUALIZAR PRECIOS ---------- */
 let preciosProductosCache = [];
 let preciosAmbito = 'todos';
 let preciosMetodo = 'porcentaje';
-let preciosTipo = 'aumento';
+let preciosTipoPorcentaje = 'aumento';
+let preciosTipoMonto = 'aumento';
+let preciosSeleccionados = new Set();
 let preciosUltimaConsulta = null;
 
 async function iniciarVistaPrecios() {
@@ -786,20 +820,41 @@ async function iniciarVistaPrecios() {
     ? proveedoresActivos.map((p) => `<option value="${p.id}">${p.nombre}</option>`).join('')
     : '<option disabled>No hay proveedores cargados</option>';
 
-  poblarListaProductoPrecios();
+  const marcas = [...new Set(preciosProductosCache.map((p) => p.marca).filter(Boolean))].sort();
+  $('#precios-marca').innerHTML = marcas.length
+    ? marcas.map((m) => `<option value="${m}">${m}</option>`).join('')
+    : '<option disabled>No hay marcas cargadas</option>';
+
+  preciosSeleccionados = new Set();
+  renderListaPreciosSeleccion();
   $('#precios-resultado-wrap').classList.add('oculto');
   $('#precios-mensaje').textContent = '';
   preciosUltimaConsulta = null;
+  actualizarDisponibilidadManual();
 }
 
-function poblarListaProductoPrecios(filtro = '') {
-  const sel = $('#precios-producto');
+function renderListaPreciosSeleccion(filtro = '') {
   const texto = filtro.trim().toLowerCase();
   const lista = preciosProductosCache.filter((p) => p.nombre.toLowerCase().includes(texto));
-  sel.innerHTML = lista.map((p) => `<option value="${p.id}">${p.nombre} — ${p.categoria_nombre}</option>`).join('')
-    || '<option disabled>Sin resultados</option>';
+  const cont = $('#precios-lista-productos');
+  cont.innerHTML = lista.length
+    ? lista.map((p) => `
+      <label class="chk-inline">
+        <input type="checkbox" class="precios-chk-producto" value="${p.id}" ${preciosSeleccionados.has(p.id) ? 'checked' : ''} />
+        ${p.nombre} — ${p.categoria_nombre}
+      </label>
+    `).join('')
+    : '<p class="ayuda">Sin resultados.</p>';
+
+  $$('.precios-chk-producto', cont).forEach((chk) => {
+    chk.addEventListener('change', () => {
+      const id = Number(chk.value);
+      if (chk.checked) preciosSeleccionados.add(id); else preciosSeleccionados.delete(id);
+      actualizarDisponibilidadManual();
+    });
+  });
 }
-$('#precios-producto-buscar').addEventListener('input', (e) => poblarListaProductoPrecios(e.target.value));
+$('#precios-producto-buscar').addEventListener('input', (e) => renderListaPreciosSeleccion(e.target.value));
 
 $$('#precios-ambito .toggle-opcion').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -808,7 +863,8 @@ $$('#precios-ambito .toggle-opcion').forEach((btn) => {
     preciosAmbito = btn.dataset.ambito;
     $('#precios-selector-categoria').classList.toggle('oculto', preciosAmbito !== 'categoria');
     $('#precios-selector-proveedor').classList.toggle('oculto', preciosAmbito !== 'proveedor');
-    $('#precios-selector-producto').classList.toggle('oculto', preciosAmbito !== 'producto');
+    $('#precios-selector-marca').classList.toggle('oculto', preciosAmbito !== 'marca');
+    $('#precios-selector-seleccion').classList.toggle('oculto', preciosAmbito !== 'seleccion');
     actualizarDisponibilidadManual();
   });
 });
@@ -816,15 +872,12 @@ $$('#precios-ambito .toggle-opcion').forEach((btn) => {
 $$('.precios-modalidad').forEach((chk) => chk.addEventListener('change', actualizarDisponibilidadManual));
 
 function modalidadesPreciosSeleccionadas() {
-  return $$('.precios-modalidad:checked').length
-    ? [...$$('.precios-modalidad:checked')].map((c) => c.value)
-    : [];
+  return [...$$('.precios-modalidad:checked')].map((c) => c.value);
 }
 
 function actualizarDisponibilidadManual() {
-  const permiteManual = preciosAmbito === 'producto' && modalidadesPreciosSeleccionadas().length === 1;
+  const permiteManual = preciosAmbito === 'seleccion' && preciosSeleccionados.size === 1 && modalidadesPreciosSeleccionadas().length === 1;
   $('#precios-opcion-manual').disabled = !permiteManual;
-  $('#precios-opcion-manual').classList.toggle('oculto', false);
   if (!permiteManual && preciosMetodo === 'manual') {
     $('#precios-metodo .toggle-opcion[data-metodo="porcentaje"]').click();
   }
@@ -837,15 +890,24 @@ $$('#precios-metodo .toggle-opcion').forEach((btn) => {
     btn.classList.add('activo');
     preciosMetodo = btn.dataset.metodo;
     $('#precios-campos-porcentaje').classList.toggle('oculto', preciosMetodo !== 'porcentaje');
+    $('#precios-campos-monto').classList.toggle('oculto', preciosMetodo !== 'monto_fijo');
     $('#precios-campos-manual').classList.toggle('oculto', preciosMetodo !== 'manual');
+    $('#precios-campos-costo-margen').classList.toggle('oculto', preciosMetodo !== 'costo_margen');
   });
 });
 
-$$('#precios-tipo .toggle-opcion').forEach((btn) => {
+$$('#precios-tipo-porcentaje .toggle-opcion').forEach((btn) => {
   btn.addEventListener('click', () => {
-    $$('#precios-tipo .toggle-opcion').forEach((b) => b.classList.remove('activo'));
+    $$('#precios-tipo-porcentaje .toggle-opcion').forEach((b) => b.classList.remove('activo'));
     btn.classList.add('activo');
-    preciosTipo = btn.dataset.tipo;
+    preciosTipoPorcentaje = btn.dataset.tipo;
+  });
+});
+$$('#precios-tipo-monto .toggle-opcion').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    $$('#precios-tipo-monto .toggle-opcion').forEach((b) => b.classList.remove('activo'));
+    btn.classList.add('activo');
+    preciosTipoMonto = btn.dataset.tipo;
   });
 });
 
@@ -855,18 +917,22 @@ function armarConsultaPrecios() {
 
   if (preciosAmbito === 'categoria') body.categoria_id = Number($('#precios-categoria').value);
   if (preciosAmbito === 'proveedor') body.proveedor_id = Number($('#precios-proveedor').value);
-  if (preciosAmbito === 'producto') body.producto_id = Number($('#precios-producto').value);
+  if (preciosAmbito === 'marca') body.marca = $('#precios-marca').value;
+  if (preciosAmbito === 'seleccion') body.producto_ids = [...preciosSeleccionados];
 
   if (preciosMetodo === 'porcentaje') {
-    body.tipo = preciosTipo;
+    body.tipo = preciosTipoPorcentaje;
     body.porcentaje = Number($('#precios-porcentaje').value);
-  } else {
+  } else if (preciosMetodo === 'monto_fijo') {
+    body.tipo = preciosTipoMonto;
+    body.monto = Number($('#precios-monto').value);
+  } else if (preciosMetodo === 'manual') {
     body.precio_manual = Number($('#precios-manual-valor').value);
   }
   return body;
 }
 
-$('#btn-previsualizar-precios').addEventListener('click', async () => {
+$('#btn-previsualizar-precios').addEventListener('click', async (e) => {
   const msg = $('#precios-mensaje');
   msg.textContent = '';
   $('#precios-resultado-wrap').classList.add('oculto');
@@ -877,60 +943,70 @@ $('#btn-previsualizar-precios').addEventListener('click', async () => {
     msg.className = 'mensaje error';
     return;
   }
+  if (body.ambito === 'seleccion' && !body.producto_ids.length) {
+    msg.textContent = 'Tildá al menos un producto de la lista.';
+    msg.className = 'mensaje error';
+    return;
+  }
 
-  const res = await fetch(`${API}/productos/actualizar-precios`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...body, confirmar: false }),
+  await conCarga(e.currentTarget, 'Calculando…', async () => {
+    const res = await fetch(`${API}/productos/actualizar-precios`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...body, confirmar: false }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.textContent = data.error || 'No se pudo calcular la previsualización.';
+      msg.className = 'mensaje error';
+      return;
+    }
+    preciosUltimaConsulta = body;
+
+    if (!data.items.length) {
+      msg.textContent = 'No hay productos que coincidan con estos filtros.';
+      msg.className = 'mensaje error';
+      return;
+    }
+
+    $('#tabla-precios-preview').innerHTML = data.items.map((it) => `
+      <tr>
+        <td>${it.nombre}</td>
+        <td>${it.etiqueta}</td>
+        <td>${money(it.precio_anterior)}</td>
+        <td class="ganancia-positiva">${money(it.precio_nuevo)}</td>
+      </tr>
+    `).join('');
+    msg.textContent = `${data.cantidad_productos} producto(s) van a cambiar de precio.`
+      + (data.omitidos ? ` (${data.omitidos} se omitieron por no tener costo cargado.)` : '');
+    msg.className = 'mensaje ok';
+    $('#precios-resultado-wrap').classList.remove('oculto');
   });
-  const data = await res.json();
-  if (!res.ok) {
-    msg.textContent = data.error || 'No se pudo calcular la previsualización.';
-    msg.className = 'mensaje error';
-    return;
-  }
-  preciosUltimaConsulta = body;
-
-  if (!data.items.length) {
-    msg.textContent = 'No hay productos que coincidan con estos filtros.';
-    msg.className = 'mensaje error';
-    return;
-  }
-
-  $('#tabla-precios-preview').innerHTML = data.items.map((it) => `
-    <tr>
-      <td>${it.nombre}</td>
-      <td>${it.etiqueta}</td>
-      <td>${money(it.precio_anterior)}</td>
-      <td class="ganancia-positiva">${money(it.precio_nuevo)}</td>
-    </tr>
-  `).join('');
-  msg.textContent = `${data.cantidad_productos} producto(s) van a cambiar de precio.`;
-  msg.className = 'mensaje ok';
-  $('#precios-resultado-wrap').classList.remove('oculto');
 });
 
-$('#btn-aplicar-precios').addEventListener('click', async () => {
+$('#btn-aplicar-precios').addEventListener('click', async (e) => {
   if (!preciosUltimaConsulta) return;
   if (!confirm('¿Confirmás aplicar estos cambios de precio? No se puede deshacer automáticamente.')) return;
 
   const msg = $('#precios-mensaje');
-  const res = await fetch(`${API}/productos/actualizar-precios`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...preciosUltimaConsulta, confirmar: true }),
+  await conCarga(e.currentTarget, 'Aplicando…', async () => {
+    const res = await fetch(`${API}/productos/actualizar-precios`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...preciosUltimaConsulta, confirmar: true }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.textContent = data.error || 'No se pudieron aplicar los cambios.';
+      msg.className = 'mensaje error';
+      return;
+    }
+    $('#precios-resultado-wrap').classList.add('oculto');
+    preciosUltimaConsulta = null;
+    await iniciarVistaPrecios();
+    msg.textContent = `Listo — se actualizaron ${data.cantidad_productos} producto(s).`;
+    msg.className = 'mensaje ok';
   });
-  const data = await res.json();
-  if (!res.ok) {
-    msg.textContent = data.error || 'No se pudieron aplicar los cambios.';
-    msg.className = 'mensaje error';
-    return;
-  }
-  msg.textContent = `Listo — se actualizaron ${data.cantidad_productos} producto(s).`;
-  msg.className = 'mensaje ok';
-  $('#precios-resultado-wrap').classList.add('oculto');
-  preciosUltimaConsulta = null;
-  iniciarVistaPrecios();
 });
 
 /* ---------- ETIQUETAS DE PRECIO ---------- */
@@ -951,6 +1027,11 @@ async function iniciarVistaEtiquetas() {
     ? proveedoresActivos.map((p) => `<option value="${p.id}">${p.nombre}</option>`).join('')
     : '<option disabled>No hay proveedores cargados</option>';
 
+  const marcas = [...new Set(etiquetasProductosCache.map((p) => p.marca).filter(Boolean))].sort();
+  $('#etiquetas-marca').innerHTML = marcas.length
+    ? marcas.map((m) => `<option value="${m}">${m}</option>`).join('')
+    : '<option disabled>No hay marcas cargadas</option>';
+
   etiquetasSeleccionados = new Set();
   renderListaEtiquetasSeleccion();
   actualizarLinkEtiquetas();
@@ -964,6 +1045,7 @@ $$('#etiquetas-ambito .toggle-opcion').forEach((btn) => {
     etiquetasAmbito = btn.dataset.ambito;
     $('#etiquetas-selector-categoria').classList.toggle('oculto', etiquetasAmbito !== 'categoria');
     $('#etiquetas-selector-proveedor').classList.toggle('oculto', etiquetasAmbito !== 'proveedor');
+    $('#etiquetas-selector-marca').classList.toggle('oculto', etiquetasAmbito !== 'marca');
     $('#etiquetas-selector-seleccion').classList.toggle('oculto', etiquetasAmbito !== 'seleccion');
     actualizarLinkEtiquetas();
   });
@@ -993,11 +1075,13 @@ function renderListaEtiquetasSeleccion(filtro = '') {
 $('#etiquetas-buscar').addEventListener('input', (e) => renderListaEtiquetasSeleccion(e.target.value));
 $('#etiquetas-categoria').addEventListener('change', actualizarLinkEtiquetas);
 $('#etiquetas-proveedor').addEventListener('change', actualizarLinkEtiquetas);
+$('#etiquetas-marca').addEventListener('change', actualizarLinkEtiquetas);
 
 function actualizarLinkEtiquetas() {
   const params = new URLSearchParams({ ambito: etiquetasAmbito });
   if (etiquetasAmbito === 'categoria') params.set('categoria_id', $('#etiquetas-categoria').value || '');
   if (etiquetasAmbito === 'proveedor') params.set('proveedor_id', $('#etiquetas-proveedor').value || '');
+  if (etiquetasAmbito === 'marca') params.set('marca', $('#etiquetas-marca').value || '');
   if (etiquetasAmbito === 'seleccion') params.set('ids', [...etiquetasSeleccionados].join(','));
   $('#btn-descargar-etiquetas').href = `${API}/etiquetas/pdf?${params.toString()}`;
 }
@@ -1071,7 +1155,7 @@ function abrirModalProveedor(id) {
   modalProveedor.classList.remove('oculto');
 }
 
-$('#btn-guardar-proveedor').addEventListener('click', async () => {
+$('#btn-guardar-proveedor').addEventListener('click', async (e) => {
   const msg = $('#pv-mensaje');
   const body = {
     nombre: $('#pv-nombre').value.trim(),
@@ -1085,21 +1169,23 @@ $('#btn-guardar-proveedor').addEventListener('click', async () => {
   const url = proveedorEditandoId ? `${API}/proveedores/${proveedorEditandoId}` : `${API}/proveedores`;
   const method = proveedorEditandoId ? 'PUT' : 'POST';
 
-  const res = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+  await conCarga(e.currentTarget, 'Guardando…', async () => {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.textContent = data.error || 'No se pudo guardar el proveedor.';
+      msg.className = 'mensaje error';
+      return;
+    }
+    msg.textContent = 'Proveedor guardado.';
+    msg.className = 'mensaje ok';
+    setTimeout(() => modalProveedor.classList.add('oculto'), 500);
+    cargarProveedores();
   });
-  const data = await res.json();
-  if (!res.ok) {
-    msg.textContent = data.error || 'No se pudo guardar el proveedor.';
-    msg.className = 'mensaje error';
-    return;
-  }
-  msg.textContent = 'Proveedor guardado.';
-  msg.className = 'mensaje ok';
-  setTimeout(() => modalProveedor.classList.add('oculto'), 500);
-  cargarProveedores();
 });
 
 /* ---------- CATEGORÍAS ---------- */
@@ -1149,19 +1235,21 @@ async function cargarCategoriasVista() {
 // La navegación llama a cargarCategorias(); la redirigimos a la versión de vista.
 function cargarCategorias() { return cargarCategoriasVista(); }
 
-$('#btn-nueva-categoria').addEventListener('click', async () => {
+$('#btn-nueva-categoria').addEventListener('click', async (e) => {
   const input = $('#nueva-categoria-nombre');
   const nombre = input.value.trim();
   if (!nombre) return;
-  const res = await fetch(`${API}/categorias`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nombre }),
+  await conCarga(e.currentTarget, 'Agregando…', async () => {
+    const res = await fetch(`${API}/categorias`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre }),
+    });
+    if (res.ok) {
+      input.value = '';
+      cargarCategoriasVista();
+    }
   });
-  if (res.ok) {
-    input.value = '';
-    cargarCategoriasVista();
-  }
 });
 
 /* ---------- ESTADÍSTICAS ---------- */
@@ -1270,7 +1358,7 @@ async function cargarAjustes() {
   $('#aj-mensaje-pie').value = config.mensaje_pie || '';
 }
 
-$('#btn-guardar-ajustes').addEventListener('click', async () => {
+$('#btn-guardar-ajustes').addEventListener('click', async (e) => {
   const msg = $('#aj-mensaje');
   const body = {
     nombre: $('#aj-nombre').value.trim(),
@@ -1278,6 +1366,7 @@ $('#btn-guardar-ajustes').addEventListener('click', async () => {
     telefono: $('#aj-telefono').value.trim(),
     mensaje_pie: $('#aj-mensaje-pie').value.trim(),
   };
+  await conCarga(e.currentTarget, 'Guardando…', async () => {
   const res = await fetch(`${API}/configuracion`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -1292,6 +1381,7 @@ $('#btn-guardar-ajustes').addEventListener('click', async () => {
   negocioConfigCache = data;
   msg.textContent = 'Ajustes guardados.';
   msg.className = 'mensaje ok';
+  });
 });
 
 /* ---------- INICIO ---------- */

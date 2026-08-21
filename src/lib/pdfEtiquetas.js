@@ -33,9 +33,11 @@ function generarEtiquetasPDF(productos, config) {
     return doc;
   }
 
+  // Etiquetas bajas y anchas, pensadas para tiras de estantería (no
+  // tarjetas cuadradas): mismas columnas, el doble de filas que antes.
   const cols = 3;
-  const rows = 5;
-  const gap = 10;
+  const rows = 10;
+  const gap = 8;
   const marginX = doc.page.margins.left;
   const marginY = doc.page.margins.top;
   const usableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
@@ -53,23 +55,23 @@ function generarEtiquetasPDF(productos, config) {
     const x = marginX + col * (cardWidth + gap);
     const y = marginY + row * (cardHeight + gap);
 
-    doc.roundedRect(x, y, cardWidth, cardHeight, 6)
-      .dash(3, { space: 3 }).lineWidth(1).strokeColor(COLOR_BORDE).stroke();
+    doc.roundedRect(x, y, cardWidth, cardHeight, 4)
+      .dash(2.5, { space: 2.5 }).lineWidth(1).strokeColor(COLOR_BORDE).stroke();
     doc.undash();
 
     if (nombreComercio) {
-      doc.fontSize(6.5).font('Helvetica').fillColor(COLOR_SUAVE)
-        .text(nombreComercio.toUpperCase(), x + 8, y + 8, { width: cardWidth - 16 });
+      doc.fontSize(5).font('Helvetica').fillColor(COLOR_SUAVE)
+        .text(nombreComercio.toUpperCase(), x + 6, y + 4, { width: cardWidth - 12 });
     }
 
-    doc.fontSize(10).font('Helvetica-Bold').fillColor(COLOR_TEXTO)
-      .text(tag.nombre, x + 8, y + 18, { width: cardWidth - 16, height: 26, ellipsis: true });
+    doc.fontSize(7.5).font('Helvetica-Bold').fillColor(COLOR_TEXTO)
+      .text(tag.nombre, x + 6, y + 12, { width: cardWidth - 12, height: 10, ellipsis: true });
 
-    doc.fontSize(24).font('Helvetica-Bold').fillColor(COLOR_PRIMARIO)
-      .text(money(tag.precio), x + 6, y + cardHeight / 2 - 8, { width: cardWidth - 12, align: 'center' });
+    doc.fontSize(15).font('Helvetica-Bold').fillColor(COLOR_PRIMARIO)
+      .text(money(tag.precio), x + 4, y + cardHeight / 2 - 6, { width: cardWidth - 8, align: 'center' });
 
-    doc.fontSize(8.5).font('Helvetica').fillColor(COLOR_SUAVE)
-      .text(tag.etiqueta, x + 8, y + cardHeight - 20, { width: cardWidth - 16, align: 'center' });
+    doc.fontSize(6).font('Helvetica').fillColor(COLOR_SUAVE)
+      .text(tag.etiqueta, x + 6, y + cardHeight - 11, { width: cardWidth - 12, align: 'center' });
   });
 
   return doc;

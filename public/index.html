@@ -225,55 +225,93 @@
     <div class="vista-header"><h1>Actualizar precios</h1></div>
 
     <div class="card-wrap">
-      <label>¿A qué productos le cambiás el precio?</label>
-      <div class="toggle-unidad" id="precios-ambito">
-        <button type="button" class="toggle-opcion activo" data-ambito="todos">Todos los productos</button>
-        <button type="button" class="toggle-opcion" data-ambito="categoria">Por categoría</button>
-        <button type="button" class="toggle-opcion" data-ambito="proveedor">Por proveedor</button>
-        <button type="button" class="toggle-opcion" data-ambito="producto">Un producto puntual</button>
-      </div>
 
-      <div id="precios-selector-categoria" class="oculto">
-        <label>Categoría</label>
-        <select id="precios-categoria"></select>
-      </div>
-      <div id="precios-selector-proveedor" class="oculto">
-        <label>Proveedor</label>
-        <select id="precios-proveedor"></select>
-      </div>
-      <div id="precios-selector-producto" class="oculto">
-        <label>Producto</label>
-        <div class="input-icono input-icono-buscar"><input type="text" id="precios-producto-buscar" placeholder="Buscar producto…" /></div>
-        <select id="precios-producto" size="5"></select>
-      </div>
-
-      <label>¿Qué precios afecta?</label>
-      <label class="chk-inline"><input type="checkbox" class="precios-modalidad" value="peso" checked /> Precio por kg</label>
-      <label class="chk-inline"><input type="checkbox" class="precios-modalidad" value="bolsa" checked /> Precio por bolsa</label>
-      <label class="chk-inline"><input type="checkbox" class="precios-modalidad" value="unidad" checked /> Precio por unidad</label>
-
-      <label>Método</label>
-      <div class="toggle-unidad" id="precios-metodo">
-        <button type="button" class="toggle-opcion activo" data-metodo="porcentaje">Porcentaje</button>
-        <button type="button" class="toggle-opcion" data-metodo="manual" id="precios-opcion-manual">Precio manual</button>
-      </div>
-
-      <div id="precios-campos-porcentaje">
-        <div class="toggle-unidad" id="precios-tipo">
-          <button type="button" class="toggle-opcion activo" data-tipo="aumento">Aumentar</button>
-          <button type="button" class="toggle-opcion" data-tipo="descuento">Bajar</button>
+      <div class="paso">
+        <div class="paso-titulo"><span class="paso-numero">1</span> ¿A qué productos le cambiás el precio?</div>
+        <div class="toggle-unidad" id="precios-ambito">
+          <button type="button" class="toggle-opcion activo" data-ambito="todos">Todos los productos</button>
+          <button type="button" class="toggle-opcion" data-ambito="categoria">Por categoría</button>
+          <button type="button" class="toggle-opcion" data-ambito="proveedor">Por proveedor</button>
+          <button type="button" class="toggle-opcion" data-ambito="marca">Por marca</button>
+          <button type="button" class="toggle-opcion" data-ambito="seleccion">Elegir productos</button>
         </div>
-        <label>Porcentaje</label>
-        <div class="input-icono input-percent"><input type="number" id="precios-porcentaje" step="0.1" min="0" placeholder="Ej: 10" /></div>
+
+        <div id="precios-selector-categoria" class="oculto">
+          <label>Categoría</label>
+          <select id="precios-categoria"></select>
+        </div>
+        <div id="precios-selector-proveedor" class="oculto">
+          <label>Proveedor</label>
+          <select id="precios-proveedor"></select>
+        </div>
+        <div id="precios-selector-marca" class="oculto">
+          <label>Marca</label>
+          <select id="precios-marca"></select>
+        </div>
+        <div id="precios-selector-seleccion" class="oculto">
+          <label>Buscar y tildar productos</label>
+          <div class="input-icono input-icono-buscar"><input type="text" id="precios-producto-buscar" placeholder="Buscar producto…" /></div>
+          <div class="lista-checks" id="precios-lista-productos"></div>
+        </div>
       </div>
 
-      <div id="precios-campos-manual" class="oculto">
-        <p class="ayuda">El precio manual solo está disponible eligiendo "Un producto puntual" y una sola modalidad tildada arriba.</p>
-        <label>Precio nuevo</label>
-        <div class="input-icono input-money"><input type="number" id="precios-manual-valor" step="0.01" min="0" /></div>
+      <hr class="paso-separador" />
+
+      <div class="paso">
+        <div class="paso-titulo"><span class="paso-numero">2</span> ¿Qué precios afecta?</div>
+        <div class="grupo-chk-pill">
+          <input type="checkbox" class="chk-pill-input precios-modalidad" value="peso" id="precios-mod-peso" checked />
+          <label for="precios-mod-peso" class="chk-pill">Precio por kg</label>
+
+          <input type="checkbox" class="chk-pill-input precios-modalidad" value="bolsa" id="precios-mod-bolsa" checked />
+          <label for="precios-mod-bolsa" class="chk-pill">Precio por bolsa</label>
+
+          <input type="checkbox" class="chk-pill-input precios-modalidad" value="unidad" id="precios-mod-unidad" checked />
+          <label for="precios-mod-unidad" class="chk-pill">Precio por unidad</label>
+        </div>
       </div>
 
-      <div class="filtro-acciones">
+      <hr class="paso-separador" />
+
+      <div class="paso">
+        <div class="paso-titulo"><span class="paso-numero">3</span> ¿Cómo cambiás el precio?</div>
+        <div class="toggle-unidad" id="precios-metodo">
+          <button type="button" class="toggle-opcion activo" data-metodo="porcentaje">Porcentaje</button>
+          <button type="button" class="toggle-opcion" data-metodo="monto_fijo">Monto fijo</button>
+          <button type="button" class="toggle-opcion" data-metodo="manual" id="precios-opcion-manual" disabled>Precio manual</button>
+          <button type="button" class="toggle-opcion" data-metodo="costo_margen">Desde costo + margen</button>
+        </div>
+
+        <div id="precios-campos-porcentaje">
+          <div class="toggle-unidad" id="precios-tipo-porcentaje">
+            <button type="button" class="toggle-opcion activo" data-tipo="aumento">Aumentar</button>
+            <button type="button" class="toggle-opcion" data-tipo="descuento">Bajar</button>
+          </div>
+          <label>Porcentaje</label>
+          <div class="input-icono input-percent"><input type="number" id="precios-porcentaje" step="0.1" min="0" placeholder="Ej: 10" /></div>
+        </div>
+
+        <div id="precios-campos-monto" class="oculto">
+          <div class="toggle-unidad" id="precios-tipo-monto">
+            <button type="button" class="toggle-opcion activo" data-tipo="aumento">Aumentar</button>
+            <button type="button" class="toggle-opcion" data-tipo="descuento">Bajar</button>
+          </div>
+          <label>Monto fijo</label>
+          <div class="input-icono input-money"><input type="number" id="precios-monto" step="1" min="0" placeholder="Ej: 500" /></div>
+        </div>
+
+        <div id="precios-campos-manual" class="oculto">
+          <p class="ayuda">Disponible solo eligiendo un único producto (paso 1, "Elegir productos") y una sola modalidad (paso 2).</p>
+          <label>Precio nuevo</label>
+          <div class="input-icono input-money"><input type="number" id="precios-manual-valor" step="0.01" min="0" /></div>
+        </div>
+
+        <div id="precios-campos-costo-margen" class="oculto">
+          <p class="ayuda">Recalcula el precio de cada producto usando su costo y margen ya cargados (los productos sin costo cargado se omiten).</p>
+        </div>
+      </div>
+
+      <div class="filtro-acciones" style="margin-top:1.3rem;">
         <button id="btn-previsualizar-precios" class="btn-primario">Previsualizar cambios</button>
       </div>
       <p id="precios-mensaje" class="mensaje"></p>
@@ -303,6 +341,7 @@
         <button type="button" class="toggle-opcion activo" data-ambito="todos">Todos los productos</button>
         <button type="button" class="toggle-opcion" data-ambito="categoria">Por categoría</button>
         <button type="button" class="toggle-opcion" data-ambito="proveedor">Por proveedor</button>
+        <button type="button" class="toggle-opcion" data-ambito="marca">Por marca</button>
         <button type="button" class="toggle-opcion" data-ambito="seleccion">Elegir productos</button>
       </div>
 
@@ -313,6 +352,10 @@
       <div id="etiquetas-selector-proveedor" class="oculto">
         <label>Proveedor</label>
         <select id="etiquetas-proveedor"></select>
+      </div>
+      <div id="etiquetas-selector-marca" class="oculto">
+        <label>Marca</label>
+        <select id="etiquetas-marca"></select>
       </div>
       <div id="etiquetas-selector-seleccion" class="oculto">
         <label>Buscar y tildar productos</label>
@@ -601,6 +644,10 @@
       <select id="np-proveedor">
         <option value="">Sin proveedor</option>
       </select>
+
+      <label>Marca (opcional)</label>
+      <input type="text" id="np-marca" list="lista-marcas" placeholder="Ej: Pedigree" autocomplete="off" />
+      <datalist id="lista-marcas"></datalist>
 
       <div class="bloque-modalidad">
         <label class="chk-inline"><input type="checkbox" id="np-vende-peso" /> Vende por peso (kg / gramos)</label>
