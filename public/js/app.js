@@ -39,6 +39,32 @@ async function conCarga(boton, textoCargando, fn) {
   }
 }
 
+// Modal de confirmación propio (reemplaza el confirm() nativo del navegador,
+// que se ve feo y no combina con el resto del sistema). Devuelve una
+// promesa que resuelve true/false según lo que elija el usuario.
+function confirmarAccion(mensaje, opciones = {}) {
+  const { titulo = 'Confirmar acción', textoConfirmar = 'Confirmar', peligro = false } = opciones;
+  return new Promise((resolve) => {
+    $('#mc-titulo').textContent = titulo;
+    $('#mc-mensaje').textContent = mensaje;
+    const btnConfirmar = $('#mc-confirmar');
+    btnConfirmar.textContent = textoConfirmar;
+    btnConfirmar.classList.toggle('btn-peligro', peligro);
+    $('#modal-confirmar').classList.remove('oculto');
+
+    const cerrar = (resultado) => {
+      $('#modal-confirmar').classList.add('oculto');
+      btnConfirmar.removeEventListener('click', onConfirmar);
+      $('#mc-cancelar').removeEventListener('click', onCancelar);
+      resolve(resultado);
+    };
+    const onConfirmar = () => cerrar(true);
+    const onCancelar = () => cerrar(false);
+    btnConfirmar.addEventListener('click', onConfirmar);
+    $('#mc-cancelar').addEventListener('click', onCancelar);
+  });
+}
+
 function hoyISO() {
   const d = new Date();
   const tz = d.getTimezoneOffset() * 60000;
@@ -319,7 +345,6 @@ async function iniciarVistaVenta() {
   carrito = [];
   renderCarrito();
   ultimaVentaConfirmada = null;
-  $('#btn-imprimir-ultima-venta').classList.add('oculto');
   $('#venta-codigo-barras').value = '';
   $('#venta-codigo-mensaje').textContent = '';
   $('#venta-codigo-barras').focus();
@@ -525,19 +550,31 @@ $('#btn-confirmar-venta').addEventListener('click', async (e) => {
       msg.className = 'mensaje error';
       return;
     }
-    msg.textContent = `Venta #${data.id} registrada — Total ${money(data.total)}, ganancia ${money(data.ganancia_total)}.`;
-    msg.className = 'mensaje ok';
+    msg.textContent = '';
     ultimaVentaConfirmada = data;
-    $('#btn-imprimir-ultima-venta').classList.remove('oculto');
     carrito = [];
     renderCarrito();
-    $('#venta-codigo-barras').focus();
+    mostrarModalVentaExito(data);
   });
 });
 
-$('#btn-imprimir-ultima-venta').addEventListener('click', () => {
+function mostrarModalVentaExito(venta) {
+  $('#ve-numero').textContent = String(venta.id).padStart(6, '0');
+  $('#ve-total').textContent = money(venta.total);
+  $('#ve-ganancia').textContent = money(venta.ganancia_total);
+  $('#modal-venta-exito').classList.remove('oculto');
+}
+
+function cerrarModalVentaExito() {
+  $('#modal-venta-exito').classList.add('oculto');
+  $('#venta-codigo-barras').focus();
+}
+
+$('#ve-btn-imprimir').addEventListener('click', () => {
+  cerrarModalVentaExito();
   if (ultimaVentaConfirmada) imprimirTicket(ultimaVentaConfirmada);
 });
+$('#ve-btn-cerrar').addEventListener('click', cerrarModalVentaExito);
 
 /* ---------- TICKET DE IMPRESIÓN (80mm) ---------- */
 async function imprimirTicket(venta) {
@@ -634,7 +671,11 @@ function renderTablaProductos() {
   });
   $$('[data-accion="baja"]', tbody).forEach((btn) => {
     btn.addEventListener('click', async () => {
-      if (!confirm('¿Dar de baja este producto?')) return;
+      const ok = await confirmarAccion(
+        'El producto deja de estar disponible para nuevas ventas. Vas a poder reactivarlo cuando quieras.',
+        { titulo: 'Dar de baja producto', textoConfirmar: 'Dar de baja', peligro: true }
+      );
+      if (!ok) return;
       await fetch(`${API}/productos/${btn.dataset.id}`, { method: 'DELETE' });
       cargarProductos();
     });
@@ -839,9 +880,13 @@ function renderListaPreciosSeleccion(filtro = '') {
   const cont = $('#precios-lista-productos');
   cont.innerHTML = lista.length
     ? lista.map((p) => `
-      <label class="chk-inline">
+      <label class="item-seleccionable ${preciosSeleccionados.has(p.id) ? 'seleccionado' : ''}">
         <input type="checkbox" class="precios-chk-producto" value="${p.id}" ${preciosSeleccionados.has(p.id) ? 'checked' : ''} />
-        ${p.nombre} — ${p.categoria_nombre}
+        <span class="item-seleccionable-check"></span>
+        <span class="item-seleccionable-info">
+          <span class="item-seleccionable-nombre">${p.nombre}</span>
+          <span class="item-seleccionable-categoria">${p.categoria_nombre}</span>
+        </span>
       </label>
     `).join('')
     : '<p class="ayuda">Sin resultados.</p>';
@@ -850,11 +895,22 @@ function renderListaPreciosSeleccion(filtro = '') {
     chk.addEventListener('change', () => {
       const id = Number(chk.value);
       if (chk.checked) preciosSeleccionados.add(id); else preciosSeleccionados.delete(id);
+      chk.closest('.item-seleccionable').classList.toggle('seleccionado', chk.checked);
+      actualizarContadorPreciosSeleccion();
       actualizarDisponibilidadManual();
     });
   });
+  actualizarContadorPreciosSeleccion();
+}
+function actualizarContadorPreciosSeleccion() {
+  $('#precios-contador-seleccion').textContent = preciosSeleccionados.size;
 }
 $('#precios-producto-buscar').addEventListener('input', (e) => renderListaPreciosSeleccion(e.target.value));
+$('#precios-vaciar-seleccion').addEventListener('click', () => {
+  preciosSeleccionados.clear();
+  renderListaPreciosSeleccion($('#precios-producto-buscar').value);
+  actualizarDisponibilidadManual();
+});
 
 $$('#precios-ambito .toggle-opcion').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -986,7 +1042,11 @@ $('#btn-previsualizar-precios').addEventListener('click', async (e) => {
 
 $('#btn-aplicar-precios').addEventListener('click', async (e) => {
   if (!preciosUltimaConsulta) return;
-  if (!confirm('¿Confirmás aplicar estos cambios de precio? No se puede deshacer automáticamente.')) return;
+  const ok = await confirmarAccion(
+    'Los precios de la vista previa se van a actualizar ahora mismo. Esta acción no se puede deshacer automáticamente.',
+    { titulo: 'Aplicar cambios de precio', textoConfirmar: 'Sí, aplicar cambios' }
+  );
+  if (!ok) return;
 
   const msg = $('#precios-mensaje');
   await conCarga(e.currentTarget, 'Aplicando…', async () => {
@@ -1057,9 +1117,13 @@ function renderListaEtiquetasSeleccion(filtro = '') {
   const cont = $('#etiquetas-lista-productos');
   cont.innerHTML = lista.length
     ? lista.map((p) => `
-      <label class="chk-inline">
+      <label class="item-seleccionable ${etiquetasSeleccionados.has(p.id) ? 'seleccionado' : ''}">
         <input type="checkbox" class="etiquetas-chk-producto" value="${p.id}" ${etiquetasSeleccionados.has(p.id) ? 'checked' : ''} />
-        ${p.nombre} — ${p.categoria_nombre}
+        <span class="item-seleccionable-check"></span>
+        <span class="item-seleccionable-info">
+          <span class="item-seleccionable-nombre">${p.nombre}</span>
+          <span class="item-seleccionable-categoria">${p.categoria_nombre}</span>
+        </span>
       </label>
     `).join('')
     : '<p class="ayuda">Sin resultados.</p>';
@@ -1068,11 +1132,22 @@ function renderListaEtiquetasSeleccion(filtro = '') {
     chk.addEventListener('change', () => {
       const id = Number(chk.value);
       if (chk.checked) etiquetasSeleccionados.add(id); else etiquetasSeleccionados.delete(id);
+      chk.closest('.item-seleccionable').classList.toggle('seleccionado', chk.checked);
+      actualizarContadorEtiquetasSeleccion();
       actualizarLinkEtiquetas();
     });
   });
+  actualizarContadorEtiquetasSeleccion();
+}
+function actualizarContadorEtiquetasSeleccion() {
+  $('#etiquetas-contador-seleccion').textContent = etiquetasSeleccionados.size;
 }
 $('#etiquetas-buscar').addEventListener('input', (e) => renderListaEtiquetasSeleccion(e.target.value));
+$('#etiquetas-vaciar-seleccion').addEventListener('click', () => {
+  etiquetasSeleccionados.clear();
+  renderListaEtiquetasSeleccion($('#etiquetas-buscar').value);
+  actualizarLinkEtiquetas();
+});
 $('#etiquetas-categoria').addEventListener('change', actualizarLinkEtiquetas);
 $('#etiquetas-proveedor').addEventListener('change', actualizarLinkEtiquetas);
 $('#etiquetas-marca').addEventListener('change', actualizarLinkEtiquetas);

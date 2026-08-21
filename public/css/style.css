@@ -473,6 +473,49 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
   position: absolute; top: 0.8rem; right: 1rem;
   background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-soft);
 }
+
+/* MODAL DE CONFIRMACIÓN (reemplaza confirm() nativo) */
+.modal-chico { width: min(400px, 100%); text-align: center; z-index: 60; }
+.mc-mensaje { color: var(--text-soft); font-size: 0.92rem; line-height: 1.45; margin: 0.4rem 0 1.4rem; }
+.mc-botones { display: flex; gap: 0.7rem; justify-content: center; }
+.mc-botones button { flex: 1; }
+.btn-peligro { background: var(--danger) !important; }
+.btn-peligro:hover { background: #a83a2d !important; }
+
+/* MODAL DE VENTA REGISTRADA */
+.venta-exito h2 { text-align: center; }
+.venta-exito-icono {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 0.8rem;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+.venta-exito-numero { text-align: center; color: var(--text-soft); font-size: 0.85rem; margin: -0.4rem 0 1.1rem; }
+.venta-exito-totales {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+  margin-bottom: 1.4rem;
+}
+.venta-exito-item {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.venta-exito-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-soft); }
+.venta-exito-valor { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; }
+.venta-exito-ganancia { color: var(--primary-dark); }
+.venta-exito-botones { display: flex; flex-direction: column; gap: 0.5rem; }
 .form-producto { display: flex; flex-direction: column; gap: 0.35rem; }
 .form-producto label {
   font-size: 0.76rem;
@@ -596,17 +639,81 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
 .grafico-barra-fecha { font-size: 0.65rem; color: var(--text-soft); margin-top: 0.3rem; white-space: nowrap; }
 .grafico-vacio { color: var(--text-soft); font-style: italic; font-size: 0.85rem; }
 
-/* LISTA CON CHECKBOX (selección múltiple de productos) */
+/* SELECTOR DE PRODUCTOS (selección múltiple, tarjetas grandes) */
+.selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0.5rem 0 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+.selector-header strong { color: var(--primary-dark); }
+.selector-header button {
+  background: none;
+  border: none;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+.selector-header button:hover { color: var(--danger); }
+
 .lista-checks {
-  max-height: 280px;
+  max-height: 340px;
   overflow-y: auto;
   border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.4rem 0.7rem;
-  margin-top: 0.4rem;
+  border-radius: var(--radius);
+  padding: 0.35rem;
 }
-.lista-checks .chk-inline { margin-top: 0.5rem !important; font-weight: 500 !important; }
-.lista-checks .chk-inline:first-child { margin-top: 0.3rem !important; }
+
+.item-seleccionable {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.7rem 0.6rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.item-seleccionable:hover { background: var(--bg); }
+.item-seleccionable.seleccionado { background: var(--primary-soft); }
+.item-seleccionable input[type="checkbox"] { position: absolute; opacity: 0; width: 0; height: 0; }
+.item-seleccionable-check {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  border: 2px solid var(--border);
+  background: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.item-seleccionable-check::after {
+  content: '';
+  width: 6px;
+  height: 11px;
+  border: solid #fff;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.12s;
+  margin-top: -2px;
+}
+.item-seleccionable.seleccionado .item-seleccionable-check { background: var(--primary); border-color: var(--primary); }
+.item-seleccionable.seleccionado .item-seleccionable-check::after { transform: rotate(45deg) scale(1); }
+.item-seleccionable-info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.item-seleccionable-nombre {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item-seleccionable-categoria { font-size: 0.76rem; color: var(--text-soft); }
 
 /* TICKET DE IMPRESIÓN (80mm) */
 #ticket-imprimir {

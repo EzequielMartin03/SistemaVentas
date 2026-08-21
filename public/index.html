@@ -190,7 +190,6 @@
         </div>
         <button id="btn-confirmar-venta" class="btn-primario" disabled>Confirmar venta</button>
         <p id="venta-mensaje" class="mensaje"></p>
-        <button id="btn-imprimir-ultima-venta" class="btn-secundario oculto">🖨 Imprimir ticket</button>
       </div>
     </div>
   </section>
@@ -249,8 +248,12 @@
           <select id="precios-marca"></select>
         </div>
         <div id="precios-selector-seleccion" class="oculto">
-          <label>Buscar y tildar productos</label>
+          <label>Buscar productos</label>
           <div class="input-icono input-icono-buscar"><input type="text" id="precios-producto-buscar" placeholder="Buscar producto…" /></div>
+          <div class="selector-header">
+            <span><strong id="precios-contador-seleccion">0</strong> producto(s) seleccionado(s)</span>
+            <button type="button" id="precios-vaciar-seleccion">Vaciar selección</button>
+          </div>
           <div class="lista-checks" id="precios-lista-productos"></div>
         </div>
       </div>
@@ -358,8 +361,12 @@
         <select id="etiquetas-marca"></select>
       </div>
       <div id="etiquetas-selector-seleccion" class="oculto">
-        <label>Buscar y tildar productos</label>
+        <label>Buscar productos</label>
         <div class="input-icono input-icono-buscar"><input type="text" id="etiquetas-buscar" placeholder="Buscar producto…" /></div>
+        <div class="selector-header">
+          <span><strong id="etiquetas-contador-seleccion">0</strong> producto(s) seleccionado(s)</span>
+          <button type="button" id="etiquetas-vaciar-seleccion">Vaciar selección</button>
+        </div>
         <div class="lista-checks" id="etiquetas-lista-productos"></div>
       </div>
 
@@ -596,6 +603,41 @@
 
       <p id="pv-mensaje" class="mensaje"></p>
       <button id="btn-guardar-proveedor" class="btn-primario">Guardar proveedor</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: confirmación genérica (reemplaza confirm() nativo) -->
+<div id="modal-confirmar" class="modal oculto">
+  <div class="modal-contenido modal-chico">
+    <h2 id="mc-titulo">Confirmar acción</h2>
+    <p id="mc-mensaje" class="mc-mensaje"></p>
+    <div class="mc-botones">
+      <button id="mc-cancelar" class="btn-secundario">Cancelar</button>
+      <button id="mc-confirmar" class="btn-primario">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: venta registrada con éxito -->
+<div id="modal-venta-exito" class="modal oculto">
+  <div class="modal-contenido modal-chico venta-exito">
+    <div class="venta-exito-icono">✓</div>
+    <h2>¡Venta registrada!</h2>
+    <p class="venta-exito-numero">Venta N° <span id="ve-numero"></span></p>
+    <div class="venta-exito-totales">
+      <div class="venta-exito-item">
+        <span class="venta-exito-label">Total</span>
+        <span class="venta-exito-valor" id="ve-total"></span>
+      </div>
+      <div class="venta-exito-item">
+        <span class="venta-exito-label">Ganancia</span>
+        <span class="venta-exito-valor venta-exito-ganancia" id="ve-ganancia"></span>
+      </div>
+    </div>
+    <div class="venta-exito-botones">
+      <button id="ve-btn-imprimir" class="btn-primario">🖨 Imprimir ticket</button>
+      <button id="ve-btn-cerrar" class="btn-secundario">Nueva venta</button>
     </div>
   </div>
 </div>
