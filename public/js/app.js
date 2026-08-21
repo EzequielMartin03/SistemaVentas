@@ -126,19 +126,26 @@ $('#btn-menu-movil').addEventListener('click', () => {
 });
 $('#menu-movil-fondo').addEventListener('click', cerrarMenuMovil);
 
-function activarVista(vista) {
+async function activarVista(vista) {
   $$('.tab').forEach((t) => t.classList.toggle('activo', t.dataset.vista === vista));
   $$('.vista').forEach((v) => v.classList.toggle('activa', v.id === `vista-${vista}`));
-  if (vista === 'caja') cargarCaja();
-  if (vista === 'venta') iniciarVistaVenta();
-  if (vista === 'productos') cargarProductos();
-  if (vista === 'categorias') cargarCategorias();
-  if (vista === 'estadisticas') iniciarVistaEstadisticas();
-  if (vista === 'ajustes') cargarAjustes();
-  if (vista === 'usuarios') cargarUsuarios();
-  if (vista === 'proveedores') cargarProveedores();
-  if (vista === 'precios') iniciarVistaPrecios();
-  if (vista === 'etiquetas') iniciarVistaEtiquetas();
+
+  $('#vista-cargando').classList.remove('oculto');
+  const tiempoMinimo = new Promise((resolve) => setTimeout(resolve, 350));
+  const carga = (async () => {
+    if (vista === 'caja') await cargarCaja();
+    else if (vista === 'venta') await iniciarVistaVenta();
+    else if (vista === 'productos') await cargarProductos();
+    else if (vista === 'categorias') await cargarCategorias();
+    else if (vista === 'estadisticas') await iniciarVistaEstadisticas();
+    else if (vista === 'ajustes') await cargarAjustes();
+    else if (vista === 'usuarios') await cargarUsuarios();
+    else if (vista === 'proveedores') await cargarProveedores();
+    else if (vista === 'precios') await iniciarVistaPrecios();
+    else if (vista === 'etiquetas') await iniciarVistaEtiquetas();
+  })();
+  await Promise.all([tiempoMinimo, carga]);
+  $('#vista-cargando').classList.add('oculto');
 }
 
 /* ---------- PROVEEDORES (compartido) ---------- */
@@ -901,7 +908,7 @@ function renderTablaPrecios(filtro = '') {
         <td>${p.nombre}</td>
         <td>${p.categoria_nombre}</td>
         <td>${precioTexto(p)}</td>
-        <td><button class="btn-fila" data-accion="actualizar-precio" data-id="${p.id}">Actualizar precio</button></td>
+        <td><button class="btn-fila btn-precio" data-accion="actualizar-precio" data-id="${p.id}">Actualizar precio</button></td>
       </tr>
     `).join('')
     : '<tr><td colspan="4" class="vacio">No hay productos que coincidan.</td></tr>';
@@ -1055,7 +1062,9 @@ let etiquetasAmbito = 'todos';
 let etiquetasSeleccionados = new Set();
 
 async function iniciarVistaEtiquetas() {
-  await Promise.all([obtenerCategorias(), obtenerProveedores()]);
+  const [, , config] = await Promise.all([obtenerCategorias(), obtenerProveedores(), obtenerConfiguracion()]);
+  $('#etiqueta-preview-comercio').textContent = (config && config.nombre) || 'Tu comercio';
+
   const res = await fetch(`${API}/productos?activo=true`);
   etiquetasProductosCache = await res.json();
 

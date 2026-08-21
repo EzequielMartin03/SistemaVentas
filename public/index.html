@@ -12,6 +12,13 @@
 </head>
 <body>
 
+<!-- OVERLAY DE CARGA AL CAMBIAR DE PANTALLA -->
+<div id="vista-cargando" class="vista-cargando oculto" aria-hidden="true">
+  <div class="vista-cargando-anillo">
+    <img src="img/logo.svg" alt="" class="vista-cargando-logo" />
+  </div>
+</div>
+
 <!-- PANTALLA DE LOGIN -->
 <div id="pantalla-login" class="pantalla-login">
   <div class="login-card">
@@ -235,44 +242,58 @@
   <section id="vista-etiquetas" class="vista">
     <div class="vista-header"><h1>Etiquetas de precio</h1></div>
 
-    <div class="card-wrap">
-      <p class="ayuda">Genera un PDF con etiquetas de precio prolijas para imprimir y recortar, usando los precios que ya están cargados — no hace falta escribirlos de nuevo.</p>
+    <div class="card-wrap etiquetas-layout">
+      <div class="etiquetas-form">
+        <p class="ayuda">Genera un PDF con etiquetas de precio prolijas para imprimir y recortar, usando los precios que ya están cargados — no hace falta escribirlos de nuevo.</p>
 
-      <label>¿Qué productos incluye?</label>
-      <div class="toggle-unidad" id="etiquetas-ambito">
-        <button type="button" class="toggle-opcion activo" data-ambito="todos">Todos los productos</button>
-        <button type="button" class="toggle-opcion" data-ambito="categoria">Por categoría</button>
-        <button type="button" class="toggle-opcion" data-ambito="proveedor">Por proveedor</button>
-        <button type="button" class="toggle-opcion" data-ambito="marca">Por marca</button>
-        <button type="button" class="toggle-opcion" data-ambito="seleccion">Elegir productos</button>
-      </div>
-
-      <div id="etiquetas-selector-categoria" class="oculto">
-        <label>Categoría</label>
-        <select id="etiquetas-categoria"></select>
-      </div>
-      <div id="etiquetas-selector-proveedor" class="oculto">
-        <label>Proveedor</label>
-        <select id="etiquetas-proveedor"></select>
-      </div>
-      <div id="etiquetas-selector-marca" class="oculto">
-        <label>Marca</label>
-        <select id="etiquetas-marca"></select>
-      </div>
-      <div id="etiquetas-selector-seleccion" class="oculto">
-        <label>Buscar productos</label>
-        <div class="input-icono input-icono-buscar"><input type="text" id="etiquetas-buscar" placeholder="Buscar producto…" /></div>
-        <div class="selector-header">
-          <span><strong id="etiquetas-contador-seleccion">0</strong> producto(s) seleccionado(s)</span>
-          <button type="button" id="etiquetas-vaciar-seleccion">Vaciar selección</button>
+        <div class="paso-titulo">📦 ¿Qué productos incluye?</div>
+        <div class="toggle-unidad" id="etiquetas-ambito">
+          <button type="button" class="toggle-opcion activo" data-ambito="todos">Todos los productos</button>
+          <button type="button" class="toggle-opcion" data-ambito="categoria">Por categoría</button>
+          <button type="button" class="toggle-opcion" data-ambito="proveedor">Por proveedor</button>
+          <button type="button" class="toggle-opcion" data-ambito="marca">Por marca</button>
+          <button type="button" class="toggle-opcion" data-ambito="seleccion">Elegir productos</button>
         </div>
-        <div class="lista-checks" id="etiquetas-lista-productos"></div>
+
+        <div id="etiquetas-selector-categoria" class="oculto">
+          <label>Categoría</label>
+          <select id="etiquetas-categoria"></select>
+        </div>
+        <div id="etiquetas-selector-proveedor" class="oculto">
+          <label>Proveedor</label>
+          <select id="etiquetas-proveedor"></select>
+        </div>
+        <div id="etiquetas-selector-marca" class="oculto">
+          <label>Marca</label>
+          <select id="etiquetas-marca"></select>
+        </div>
+        <div id="etiquetas-selector-seleccion" class="oculto">
+          <label>Buscar productos</label>
+          <div class="input-icono input-icono-buscar"><input type="text" id="etiquetas-buscar" placeholder="Buscar producto…" /></div>
+          <div class="selector-header">
+            <span><strong id="etiquetas-contador-seleccion">0</strong> producto(s) seleccionado(s)</span>
+            <button type="button" id="etiquetas-vaciar-seleccion">Vaciar selección</button>
+          </div>
+          <div class="lista-checks" id="etiquetas-lista-productos"></div>
+        </div>
+
+        <hr class="paso-separador" />
+
+        <div class="filtro-acciones">
+          <a id="btn-descargar-etiquetas" class="btn-primario" href="#" target="_blank" rel="noopener">⬇ Descargar PDF de etiquetas</a>
+        </div>
+        <p id="etiquetas-mensaje" class="mensaje"></p>
       </div>
 
-      <div class="filtro-acciones">
-        <a id="btn-descargar-etiquetas" class="btn-primario" href="#" target="_blank" rel="noopener">⬇ Descargar PDF de etiquetas</a>
+      <div class="etiquetas-preview-col">
+        <span class="etiquetas-preview-caption">Así se ve cada etiqueta impresa</span>
+        <div class="etiqueta-preview">
+          <span class="etiqueta-preview-comercio" id="etiqueta-preview-comercio">Tu comercio</span>
+          <span class="etiqueta-preview-nombre">Balanceado Perro 20kg</span>
+          <span class="etiqueta-preview-precio">$45.000</span>
+          <span class="etiqueta-preview-modo">bolsa x 20kg</span>
+        </div>
       </div>
-      <p id="etiquetas-mensaje" class="mensaje"></p>
     </div>
   </section>
 
@@ -408,17 +429,27 @@
   <section id="vista-ajustes" class="vista">
     <div class="vista-header"><h1>Ajustes</h1></div>
 
-    <div class="card-wrap form-producto">
-      <p class="ayuda">Estos datos aparecen en el ticket impreso y en los reportes PDF.</p>
+    <div class="card-wrap form-producto ajustes-card">
+      <div class="paso-titulo">🏬 Datos del comercio</div>
+      <p class="ayuda">Aparecen en el ticket impreso y en los reportes PDF.</p>
+
       <label>Nombre del comercio</label>
       <input type="text" id="aj-nombre" placeholder="Ej: Polirubro Avellaneda" />
 
-      <label>Dirección</label>
-      <input type="text" id="aj-direccion" placeholder="Ej: Av. Mitre 1234, Avellaneda" />
+      <div class="ajustes-grid">
+        <div>
+          <label>Dirección</label>
+          <input type="text" id="aj-direccion" placeholder="Ej: Av. Mitre 1234, Avellaneda" />
+        </div>
+        <div>
+          <label>Teléfono</label>
+          <input type="text" id="aj-telefono" placeholder="Ej: 11-2345-6789" />
+        </div>
+      </div>
 
-      <label>Teléfono</label>
-      <input type="text" id="aj-telefono" placeholder="Ej: 11-2345-6789" />
+      <hr class="paso-separador" />
 
+      <div class="paso-titulo">🧾 Ticket de venta</div>
       <label>Mensaje de pie del ticket</label>
       <input type="text" id="aj-mensaje-pie" placeholder="Ej: ¡Gracias por su compra!" />
 
