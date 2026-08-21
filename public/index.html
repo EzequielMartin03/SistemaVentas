@@ -206,111 +206,28 @@
     <div class="vista-header"><h1>Actualizar precios</h1></div>
 
     <div class="card-wrap">
-
-      <div class="paso">
-        <div class="paso-titulo"><span class="paso-numero">1</span> ¿A qué productos le cambiás el precio?</div>
-        <div class="toggle-unidad" id="precios-ambito">
-          <button type="button" class="toggle-opcion activo" data-ambito="todos">Todos los productos</button>
-          <button type="button" class="toggle-opcion" data-ambito="categoria">Por categoría</button>
-          <button type="button" class="toggle-opcion" data-ambito="proveedor">Por proveedor</button>
-          <button type="button" class="toggle-opcion" data-ambito="marca">Por marca</button>
-          <button type="button" class="toggle-opcion" data-ambito="seleccion">Elegir productos</button>
+      <div class="filtro-acciones">
+        <div class="toggle-unidad" id="precios-masivo-tipo">
+          <button type="button" class="toggle-opcion activo" data-tipo="aumento">Aumentar</button>
+          <button type="button" class="toggle-opcion" data-tipo="descuento">Bajar</button>
         </div>
-
-        <div id="precios-selector-categoria" class="oculto">
-          <label>Categoría</label>
-          <select id="precios-categoria"></select>
-        </div>
-        <div id="precios-selector-proveedor" class="oculto">
-          <label>Proveedor</label>
-          <select id="precios-proveedor"></select>
-        </div>
-        <div id="precios-selector-marca" class="oculto">
-          <label>Marca</label>
-          <select id="precios-marca"></select>
-        </div>
-        <div id="precios-selector-seleccion" class="oculto">
-          <label>Buscar productos</label>
-          <div class="input-icono input-icono-buscar"><input type="text" id="precios-producto-buscar" placeholder="Buscar producto…" /></div>
-          <div class="selector-header">
-            <span><strong id="precios-contador-seleccion">0</strong> producto(s) seleccionado(s)</span>
-            <button type="button" id="precios-vaciar-seleccion">Vaciar selección</button>
-          </div>
-          <div class="lista-checks" id="precios-lista-productos"></div>
-        </div>
+        <span>todos los precios un</span>
+        <div class="input-icono input-percent input-percent-chico"><input type="number" id="precios-masivo-porcentaje" step="0.1" min="0" placeholder="Ej: 10" /></div>
+        <button id="btn-precios-masivo-aplicar" class="btn-secundario">Aplicar a todos</button>
       </div>
-
-      <hr class="paso-separador" />
-
-      <div class="paso">
-        <div class="paso-titulo"><span class="paso-numero">2</span> ¿Qué precios afecta?</div>
-        <div class="grupo-chk-pill">
-          <input type="checkbox" class="chk-pill-input precios-modalidad" value="peso" id="precios-mod-peso" checked />
-          <label for="precios-mod-peso" class="chk-pill">Precio por kg</label>
-
-          <input type="checkbox" class="chk-pill-input precios-modalidad" value="bolsa" id="precios-mod-bolsa" checked />
-          <label for="precios-mod-bolsa" class="chk-pill">Precio por bolsa</label>
-
-          <input type="checkbox" class="chk-pill-input precios-modalidad" value="unidad" id="precios-mod-unidad" checked />
-          <label for="precios-mod-unidad" class="chk-pill">Precio por unidad</label>
-        </div>
-      </div>
-
-      <hr class="paso-separador" />
-
-      <div class="paso">
-        <div class="paso-titulo"><span class="paso-numero">3</span> ¿Cómo cambiás el precio?</div>
-        <div class="toggle-unidad" id="precios-metodo">
-          <button type="button" class="toggle-opcion activo" data-metodo="porcentaje">Porcentaje</button>
-          <button type="button" class="toggle-opcion" data-metodo="monto_fijo">Monto fijo</button>
-          <button type="button" class="toggle-opcion" data-metodo="manual" id="precios-opcion-manual" disabled>Precio manual</button>
-          <button type="button" class="toggle-opcion" data-metodo="costo_margen">Desde costo + margen</button>
-        </div>
-
-        <div id="precios-campos-porcentaje">
-          <div class="toggle-unidad" id="precios-tipo-porcentaje">
-            <button type="button" class="toggle-opcion activo" data-tipo="aumento">Aumentar</button>
-            <button type="button" class="toggle-opcion" data-tipo="descuento">Bajar</button>
-          </div>
-          <label>Porcentaje</label>
-          <div class="input-icono input-percent"><input type="number" id="precios-porcentaje" step="0.1" min="0" placeholder="Ej: 10" /></div>
-        </div>
-
-        <div id="precios-campos-monto" class="oculto">
-          <div class="toggle-unidad" id="precios-tipo-monto">
-            <button type="button" class="toggle-opcion activo" data-tipo="aumento">Aumentar</button>
-            <button type="button" class="toggle-opcion" data-tipo="descuento">Bajar</button>
-          </div>
-          <label>Monto fijo</label>
-          <div class="input-icono input-money"><input type="number" id="precios-monto" step="1" min="0" placeholder="Ej: 500" /></div>
-        </div>
-
-        <div id="precios-campos-manual" class="oculto">
-          <p class="ayuda">Disponible solo eligiendo un único producto (paso 1, "Elegir productos") y una sola modalidad (paso 2).</p>
-          <label>Precio nuevo</label>
-          <div class="input-icono input-money"><input type="number" id="precios-manual-valor" step="0.01" min="0" /></div>
-        </div>
-
-        <div id="precios-campos-costo-margen" class="oculto">
-          <p class="ayuda">Recalcula el precio de cada producto usando su costo y margen ya cargados (los productos sin costo cargado se omiten).</p>
-        </div>
-      </div>
-
-      <div class="filtro-acciones" style="margin-top:1.3rem;">
-        <button id="btn-previsualizar-precios" class="btn-primario">Previsualizar cambios</button>
-      </div>
-      <p id="precios-mensaje" class="mensaje"></p>
     </div>
 
-    <div class="card-wrap oculto" id="precios-resultado-wrap">
-      <h2>Vista previa — revisá antes de confirmar</h2>
-      <div class="tabla-scroll">
+    <div class="card-wrap">
+      <label class="precios-buscar-label">Buscar producto</label>
+      <div class="input-icono input-icono-buscar"><input type="text" id="precios-buscar" placeholder="Nombre o código de barras…" /></div>
+
+      <div class="tabla-scroll" style="margin-top:0.8rem;">
         <table class="tabla">
-          <thead><tr><th>Producto</th><th>Modalidad</th><th>Precio actual</th><th>Precio nuevo</th></tr></thead>
-          <tbody id="tabla-precios-preview"></tbody>
+          <thead><tr><th>Producto</th><th>Categoría</th><th>Precios</th><th></th></tr></thead>
+          <tbody id="tabla-precios-productos"><tr><td colspan="4" class="vacio">Cargando…</td></tr></tbody>
         </table>
       </div>
-      <button id="btn-aplicar-precios" class="btn-primario" style="margin-top:1rem;">Confirmar y aplicar</button>
+      <p id="precios-mensaje" class="mensaje"></p>
     </div>
   </section>
 
@@ -728,6 +645,44 @@
       <p id="np-mensaje" class="mensaje"></p>
       <button id="btn-guardar-producto" class="btn-primario">Guardar producto</button>
     </div>
+  </div>
+</div>
+
+<div id="modal-actualizar-precio" class="modal oculto">
+  <div class="modal-contenido">
+    <button class="modal-cerrar" id="cerrar-modal-actualizar-precio">×</button>
+    <h2>Actualizar precio</h2>
+    <p class="ap-producto-nombre" id="ap-producto-nombre"></p>
+
+    <div id="ap-bloque-peso" class="bloque-modalidad oculto">
+      <label class="ap-subtitulo">Precio por kg</label>
+      <div class="fila-costo-margen">
+        <div><label>Precio de costo</label><div class="input-icono input-money"><input type="number" id="ap-costo-peso" step="0.01" /></div></div>
+        <div><label>Margen</label><div class="input-icono input-percent"><input type="number" id="ap-margen-peso" step="1" /></div></div>
+        <div><label>Precio de venta</label><div class="input-icono input-money"><input type="number" id="ap-precio-peso" step="0.01" /></div></div>
+      </div>
+    </div>
+
+    <div id="ap-bloque-bolsa" class="bloque-modalidad oculto">
+      <label class="ap-subtitulo" id="ap-bolsa-titulo">Precio por bolsa</label>
+      <div class="fila-costo-margen">
+        <div><label>Precio de costo</label><div class="input-icono input-money"><input type="number" id="ap-costo-bolsa" step="0.01" /></div></div>
+        <div><label>Margen</label><div class="input-icono input-percent"><input type="number" id="ap-margen-bolsa" step="1" /></div></div>
+        <div><label>Precio de venta</label><div class="input-icono input-money"><input type="number" id="ap-precio-bolsa" step="0.01" /></div></div>
+      </div>
+    </div>
+
+    <div id="ap-bloque-unidad" class="bloque-modalidad oculto">
+      <label class="ap-subtitulo">Precio por unidad</label>
+      <div class="fila-costo-margen">
+        <div><label>Precio de costo</label><div class="input-icono input-money"><input type="number" id="ap-costo-unidad" step="0.01" /></div></div>
+        <div><label>Margen</label><div class="input-icono input-percent"><input type="number" id="ap-margen-unidad" step="1" /></div></div>
+        <div><label>Precio de venta</label><div class="input-icono input-money"><input type="number" id="ap-precio-unidad" step="0.01" /></div></div>
+      </div>
+    </div>
+
+    <p id="ap-mensaje" class="mensaje"></p>
+    <button id="btn-guardar-actualizar-precio" class="btn-primario" style="margin-top:0.4rem;">Guardar precio</button>
   </div>
 </div>
 

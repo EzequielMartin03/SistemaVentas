@@ -644,6 +644,17 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
 }
 .filtro-acciones { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin-top: 0.6rem; }
 
+/* ACTUALIZAR PRECIOS */
+.input-percent-chico { width: 100px; }
+.precios-buscar-label {
+  display: block;
+  font-size: 0.76rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.03em; color: var(--text-soft);
+  margin-bottom: 0.3rem;
+}
+.ap-producto-nombre { font-weight: 600; font-size: 1.05rem; margin: -0.2rem 0 0.9rem; }
+.ap-subtitulo { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.3rem; }
+
 .grafico-barras {
   display: flex;
   align-items: flex-end;

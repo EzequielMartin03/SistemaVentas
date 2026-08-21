@@ -876,220 +876,81 @@ $('#btn-guardar-producto').addEventListener('click', async (e) => {
 
 /* ---------- ACTUALIZAR PRECIOS ---------- */
 let preciosProductosCache = [];
-let preciosAmbito = 'todos';
-let preciosMetodo = 'porcentaje';
-let preciosTipoPorcentaje = 'aumento';
-let preciosTipoMonto = 'aumento';
-let preciosSeleccionados = new Set();
-let preciosUltimaConsulta = null;
+let preciosMasivoTipo = 'aumento';
+let precioEditandoId = null;
 
 async function iniciarVistaPrecios() {
-  await Promise.all([obtenerCategorias(), obtenerProveedores()]);
   const res = await fetch(`${API}/productos?activo=true`);
   preciosProductosCache = await res.json();
-
-  $('#precios-categoria').innerHTML = categoriasCache.filter((c) => c.activa)
-    .map((c) => `<option value="${c.id}">${c.nombre}</option>`).join('');
-
-  const proveedoresActivos = proveedoresCache.filter((p) => p.activo);
-  $('#precios-proveedor').innerHTML = proveedoresActivos.length
-    ? proveedoresActivos.map((p) => `<option value="${p.id}">${p.nombre}</option>`).join('')
-    : '<option disabled>No hay proveedores cargados</option>';
-
-  const marcas = [...new Set(preciosProductosCache.map((p) => p.marca).filter(Boolean))].sort();
-  $('#precios-marca').innerHTML = marcas.length
-    ? marcas.map((m) => `<option value="${m}">${m}</option>`).join('')
-    : '<option disabled>No hay marcas cargadas</option>';
-
-  preciosSeleccionados = new Set();
-  renderListaPreciosSeleccion();
-  $('#precios-resultado-wrap').classList.add('oculto');
+  $('#precios-buscar').value = '';
   $('#precios-mensaje').textContent = '';
-  preciosUltimaConsulta = null;
-  actualizarDisponibilidadManual();
+  renderTablaPrecios();
 }
 
-function renderListaPreciosSeleccion(filtro = '') {
+function renderTablaPrecios(filtro = '') {
   const texto = filtro.trim().toLowerCase();
-  const lista = preciosProductosCache.filter((p) => p.nombre.toLowerCase().includes(texto));
-  const cont = $('#precios-lista-productos');
-  cont.innerHTML = lista.length
+  const lista = texto
+    ? preciosProductosCache.filter((p) =>
+        p.nombre.toLowerCase().includes(texto) || (p.codigo_barras || '').toLowerCase().includes(texto))
+    : preciosProductosCache;
+  const tbody = $('#tabla-precios-productos');
+
+  tbody.innerHTML = lista.length
     ? lista.map((p) => `
-      <label class="item-seleccionable ${preciosSeleccionados.has(p.id) ? 'seleccionado' : ''}">
-        <input type="checkbox" class="precios-chk-producto" value="${p.id}" ${preciosSeleccionados.has(p.id) ? 'checked' : ''} />
-        <span class="item-seleccionable-check"></span>
-        <span class="item-seleccionable-info">
-          <span class="item-seleccionable-nombre">${p.nombre}</span>
-          <span class="item-seleccionable-categoria">${p.categoria_nombre}</span>
-        </span>
-      </label>
+      <tr>
+        <td>${p.nombre}</td>
+        <td>${p.categoria_nombre}</td>
+        <td>${precioTexto(p)}</td>
+        <td><button class="btn-fila" data-accion="actualizar-precio" data-id="${p.id}">Actualizar precio</button></td>
+      </tr>
     `).join('')
-    : '<p class="ayuda">Sin resultados.</p>';
+    : '<tr><td colspan="4" class="vacio">No hay productos que coincidan.</td></tr>';
 
-  $$('.precios-chk-producto', cont).forEach((chk) => {
-    chk.addEventListener('change', () => {
-      const id = Number(chk.value);
-      if (chk.checked) preciosSeleccionados.add(id); else preciosSeleccionados.delete(id);
-      chk.closest('.item-seleccionable').classList.toggle('seleccionado', chk.checked);
-      actualizarContadorPreciosSeleccion();
-      actualizarDisponibilidadManual();
-    });
+  $$('[data-accion="actualizar-precio"]', tbody).forEach((btn) => {
+    btn.addEventListener('click', () => abrirModalActualizarPrecio(Number(btn.dataset.id)));
   });
-  actualizarContadorPreciosSeleccion();
 }
-function actualizarContadorPreciosSeleccion() {
-  $('#precios-contador-seleccion').textContent = preciosSeleccionados.size;
-}
-$('#precios-producto-buscar').addEventListener('input', (e) => renderListaPreciosSeleccion(e.target.value));
-$('#precios-vaciar-seleccion').addEventListener('click', () => {
-  preciosSeleccionados.clear();
-  renderListaPreciosSeleccion($('#precios-producto-buscar').value);
-  actualizarDisponibilidadManual();
-});
 
-$$('#precios-ambito .toggle-opcion').forEach((btn) => {
+$('#precios-buscar').addEventListener('input', (e) => renderTablaPrecios(e.target.value));
+
+$$('#precios-masivo-tipo .toggle-opcion').forEach((btn) => {
   btn.addEventListener('click', () => {
-    $$('#precios-ambito .toggle-opcion').forEach((b) => b.classList.remove('activo'));
+    $$('#precios-masivo-tipo .toggle-opcion').forEach((b) => b.classList.remove('activo'));
     btn.classList.add('activo');
-    preciosAmbito = btn.dataset.ambito;
-    $('#precios-selector-categoria').classList.toggle('oculto', preciosAmbito !== 'categoria');
-    $('#precios-selector-proveedor').classList.toggle('oculto', preciosAmbito !== 'proveedor');
-    $('#precios-selector-marca').classList.toggle('oculto', preciosAmbito !== 'marca');
-    $('#precios-selector-seleccion').classList.toggle('oculto', preciosAmbito !== 'seleccion');
-    actualizarDisponibilidadManual();
+    preciosMasivoTipo = btn.dataset.tipo;
   });
 });
 
-$$('.precios-modalidad').forEach((chk) => chk.addEventListener('change', actualizarDisponibilidadManual));
-
-function modalidadesPreciosSeleccionadas() {
-  return [...$$('.precios-modalidad:checked')].map((c) => c.value);
-}
-
-function actualizarDisponibilidadManual() {
-  const permiteManual = preciosAmbito === 'seleccion' && preciosSeleccionados.size === 1 && modalidadesPreciosSeleccionadas().length === 1;
-  $('#precios-opcion-manual').disabled = !permiteManual;
-  if (!permiteManual && preciosMetodo === 'manual') {
-    $('#precios-metodo .toggle-opcion[data-metodo="porcentaje"]').click();
-  }
-}
-
-$$('#precios-metodo .toggle-opcion').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    if (btn.disabled) return;
-    $$('#precios-metodo .toggle-opcion').forEach((b) => b.classList.remove('activo'));
-    btn.classList.add('activo');
-    preciosMetodo = btn.dataset.metodo;
-    $('#precios-campos-porcentaje').classList.toggle('oculto', preciosMetodo !== 'porcentaje');
-    $('#precios-campos-monto').classList.toggle('oculto', preciosMetodo !== 'monto_fijo');
-    $('#precios-campos-manual').classList.toggle('oculto', preciosMetodo !== 'manual');
-    $('#precios-campos-costo-margen').classList.toggle('oculto', preciosMetodo !== 'costo_margen');
-  });
-});
-
-$$('#precios-tipo-porcentaje .toggle-opcion').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    $$('#precios-tipo-porcentaje .toggle-opcion').forEach((b) => b.classList.remove('activo'));
-    btn.classList.add('activo');
-    preciosTipoPorcentaje = btn.dataset.tipo;
-  });
-});
-$$('#precios-tipo-monto .toggle-opcion').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    $$('#precios-tipo-monto .toggle-opcion').forEach((b) => b.classList.remove('activo'));
-    btn.classList.add('activo');
-    preciosTipoMonto = btn.dataset.tipo;
-  });
-});
-
-function armarConsultaPrecios() {
-  const modalidades = modalidadesPreciosSeleccionadas();
-  const body = { ambito: preciosAmbito, modalidades, metodo: preciosMetodo };
-
-  if (preciosAmbito === 'categoria') body.categoria_id = Number($('#precios-categoria').value);
-  if (preciosAmbito === 'proveedor') body.proveedor_id = Number($('#precios-proveedor').value);
-  if (preciosAmbito === 'marca') body.marca = $('#precios-marca').value;
-  if (preciosAmbito === 'seleccion') body.producto_ids = [...preciosSeleccionados];
-
-  if (preciosMetodo === 'porcentaje') {
-    body.tipo = preciosTipoPorcentaje;
-    body.porcentaje = Number($('#precios-porcentaje').value);
-  } else if (preciosMetodo === 'monto_fijo') {
-    body.tipo = preciosTipoMonto;
-    body.monto = Number($('#precios-monto').value);
-  } else if (preciosMetodo === 'manual') {
-    body.precio_manual = Number($('#precios-manual-valor').value);
-  }
-  return body;
-}
-
-$('#btn-previsualizar-precios').addEventListener('click', async (e) => {
+$('#btn-precios-masivo-aplicar').addEventListener('click', async () => {
   const msg = $('#precios-mensaje');
   msg.textContent = '';
-  $('#precios-resultado-wrap').classList.add('oculto');
 
-  const body = armarConsultaPrecios();
-  if (!body.modalidades.length) {
-    msg.textContent = 'Tildá al menos un tipo de precio (kg, bolsa o unidad).';
-    msg.className = 'mensaje error';
-    return;
-  }
-  if (body.ambito === 'seleccion' && !body.producto_ids.length) {
-    msg.textContent = 'Tildá al menos un producto de la lista.';
+  const porcentaje = Number($('#precios-masivo-porcentaje').value);
+  if (!(porcentaje > 0)) {
+    msg.textContent = 'Indicá un porcentaje mayor a 0.';
     msg.className = 'mensaje error';
     return;
   }
 
-  await conCarga(e.currentTarget, 'Calculando…', async () => {
-    const res = await fetch(`${API}/productos/actualizar-precios`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...body, confirmar: false }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      msg.textContent = data.error || 'No se pudo calcular la previsualización.';
-      msg.className = 'mensaje error';
-      return;
-    }
-    preciosUltimaConsulta = body;
-
-    if (!data.items.length) {
-      msg.textContent = 'No hay productos que coincidan con estos filtros.';
-      msg.className = 'mensaje error';
-      return;
-    }
-
-    $('#tabla-precios-preview').innerHTML = data.items.map((it) => `
-      <tr>
-        <td>${it.nombre}</td>
-        <td>${it.etiqueta}</td>
-        <td>${money(it.precio_anterior)}</td>
-        <td class="ganancia-positiva">${money(it.precio_nuevo)}</td>
-      </tr>
-    `).join('');
-    msg.textContent = `${data.cantidad_productos} producto(s) van a cambiar de precio.`
-      + (data.omitidos ? ` (${data.omitidos} se omitieron por no tener costo cargado.)` : '');
-    msg.className = 'mensaje ok';
-    $('#precios-resultado-wrap').classList.remove('oculto');
-  });
-});
-
-$('#btn-aplicar-precios').addEventListener('click', async (e) => {
-  if (!preciosUltimaConsulta) return;
+  const verbo = preciosMasivoTipo === 'aumento' ? 'aumentar' : 'bajar';
   const ok = await confirmarAccion(
-    'Los precios de la vista previa se van a actualizar ahora mismo. Esta acción no se puede deshacer automáticamente.',
-    { titulo: 'Aplicar cambios de precio', textoConfirmar: 'Sí, aplicar cambios' }
+    `Vas a ${verbo} un ${porcentaje}% el precio de TODOS los productos. Esta acción no se puede deshacer automáticamente.`,
+    { titulo: 'Aplicar a todos los precios', textoConfirmar: `Sí, ${verbo} todo` }
   );
   if (!ok) return;
 
-  const msg = $('#precios-mensaje');
   mostrarCargaGrande('Actualizando precios…');
-
   const res = await fetch(`${API}/productos/actualizar-precios`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...preciosUltimaConsulta, confirmar: true }),
+    body: JSON.stringify({
+      ambito: 'todos',
+      modalidades: ['peso', 'bolsa', 'unidad'],
+      metodo: 'porcentaje',
+      tipo: preciosMasivoTipo,
+      porcentaje,
+      confirmar: true,
+    }),
   });
   const data = await res.json();
   if (!res.ok) {
@@ -1098,10 +959,94 @@ $('#btn-aplicar-precios').addEventListener('click', async (e) => {
     msg.className = 'mensaje error';
     return;
   }
-  $('#precios-resultado-wrap').classList.add('oculto');
-  preciosUltimaConsulta = null;
+  $('#precios-masivo-porcentaje').value = '';
   await iniciarVistaPrecios();
   mostrarExitoCargaGrande(`Se actualizaron ${data.cantidad_productos} producto(s) correctamente.`);
+});
+
+/* Modal "Actualizar precio" de un producto puntual: costo + margen, con el
+   precio de venta calculado igual que en el alta de producto (costo * (1 + margen/100)). */
+async function abrirModalActualizarPrecio(id) {
+  const res = await fetch(`${API}/productos/${id}`);
+  const p = await res.json();
+  precioEditandoId = id;
+
+  $('#ap-producto-nombre').textContent = p.nombre;
+  $('#ap-mensaje').textContent = '';
+
+  $('#ap-bloque-peso').classList.toggle('oculto', !p.vende_por_peso);
+  if (p.vende_por_peso) {
+    $('#ap-costo-peso').value = p.costo_kg ?? '';
+    $('#ap-margen-peso').value = p.margen_kg ?? '';
+    $('#ap-precio-peso').value = p.precio_kg ?? '';
+  }
+
+  $('#ap-bloque-bolsa').classList.toggle('oculto', !p.vende_por_bolsa);
+  if (p.vende_por_bolsa) {
+    $('#ap-bolsa-titulo').textContent = `Precio por bolsa (${Number(p.peso_bolsa_kg)}kg)`;
+    $('#ap-costo-bolsa').value = p.costo_bolsa ?? '';
+    $('#ap-margen-bolsa').value = p.margen_bolsa ?? '';
+    $('#ap-precio-bolsa').value = p.precio_bolsa ?? '';
+  }
+
+  $('#ap-bloque-unidad').classList.toggle('oculto', !p.vende_por_unidad);
+  if (p.vende_por_unidad) {
+    $('#ap-costo-unidad').value = p.costo_unidad ?? '';
+    $('#ap-margen-unidad').value = p.margen_unidad ?? '';
+    $('#ap-precio-unidad').value = p.precio_unidad ?? '';
+  }
+
+  $('#modal-actualizar-precio').classList.remove('oculto');
+}
+
+$('#cerrar-modal-actualizar-precio').addEventListener('click', () => {
+  $('#modal-actualizar-precio').classList.add('oculto');
+});
+
+autocalcularPrecio('#ap-costo-peso', '#ap-margen-peso', '#ap-precio-peso');
+autocalcularPrecio('#ap-costo-bolsa', '#ap-margen-bolsa', '#ap-precio-bolsa');
+autocalcularPrecio('#ap-costo-unidad', '#ap-margen-unidad', '#ap-precio-unidad');
+
+$('#btn-guardar-actualizar-precio').addEventListener('click', async (e) => {
+  if (!precioEditandoId) return;
+  const msg = $('#ap-mensaje');
+  msg.textContent = '';
+
+  const numOrNull = (sel) => ($(sel).value === '' ? null : Number($(sel).value));
+  const body = {};
+  if (!$('#ap-bloque-peso').classList.contains('oculto')) {
+    body.costo_kg = numOrNull('#ap-costo-peso');
+    body.margen_kg = numOrNull('#ap-margen-peso');
+    body.precio_kg = numOrNull('#ap-precio-peso');
+  }
+  if (!$('#ap-bloque-bolsa').classList.contains('oculto')) {
+    body.costo_bolsa = numOrNull('#ap-costo-bolsa');
+    body.margen_bolsa = numOrNull('#ap-margen-bolsa');
+    body.precio_bolsa = numOrNull('#ap-precio-bolsa');
+  }
+  if (!$('#ap-bloque-unidad').classList.contains('oculto')) {
+    body.costo_unidad = numOrNull('#ap-costo-unidad');
+    body.margen_unidad = numOrNull('#ap-margen-unidad');
+    body.precio_unidad = numOrNull('#ap-precio-unidad');
+  }
+
+  await conCarga(e.currentTarget, 'Guardando…', async () => {
+    const res = await fetch(`${API}/productos/${precioEditandoId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.textContent = (data.errores || [data.error]).join(' ');
+      msg.className = 'mensaje error';
+      return;
+    }
+    msg.textContent = 'Precio actualizado.';
+    msg.className = 'mensaje ok';
+    setTimeout(() => $('#modal-actualizar-precio').classList.add('oculto'), 500);
+    iniciarVistaPrecios();
+  });
 });
 
 /* ---------- ETIQUETAS DE PRECIO ---------- */
