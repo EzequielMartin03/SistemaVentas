@@ -67,7 +67,7 @@ input:disabled, select:disabled { opacity: 0.55; cursor: not-allowed; }
   z-index: 20;
 }
 .brand { display: flex; align-items: center; gap: 0.7rem; }
-.brand-icon { width: 42px; height: 42px; flex-shrink: 0; }
+.brand-icon { width: 42px; height: 42px; flex-shrink: 0; object-fit: contain; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.05; }
 .brand-line {
   font-family: var(--font-display);
