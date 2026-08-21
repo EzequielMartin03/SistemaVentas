@@ -375,27 +375,16 @@ $('#venta-codigo-barras').addEventListener('keydown', async (e) => {
   $('#venta-producto').value = String(producto.id);
   actualizarModosVenta();
 
-  const modalidades = [producto.vende_por_peso, producto.vende_por_bolsa, producto.vende_por_unidad].filter(Boolean).length;
-  if (modalidades === 1 && !producto.vende_por_peso) {
-    // Bolsa o unidad únicas: alta directa al carrito (flujo rápido tipo supermercado).
-    $('#venta-modo').value = producto.vende_por_bolsa ? 'bolsa' : 'unidad';
-    actualizarUnidadPesoVisible();
-    $('#venta-cantidad').value = '1';
-    const item = calcularItemVenta();
-    if (item) {
-      carrito.push(item);
-      renderCarrito();
-      msg.textContent = `${producto.nombre} agregado a la venta.`;
-      msg.className = 'ayuda mensaje ok';
-      $('#venta-cantidad').value = '';
-    }
-  } else {
-    msg.textContent = `${producto.nombre} seleccionado. Indicá cantidad.`;
-    msg.className = 'ayuda mensaje ok';
-    $('#venta-cantidad').focus();
-    return;
-  }
-  input.focus();
+  // Nunca se agrega solo: siempre se pide la cantidad, así el cajero puede
+  // cargar más de una unidad sin tener que corregir el carrito después.
+  const cantidadInput = $('#venta-cantidad');
+  cantidadInput.value = producto.vende_por_peso && !producto.vende_por_bolsa && !producto.vende_por_unidad ? '' : '1';
+  cantidadInput.focus();
+  cantidadInput.select();
+  actualizarPreview();
+
+  msg.textContent = `${producto.nombre} — indicá la cantidad y presioná Enter para agregarlo.`;
+  msg.className = 'ayuda mensaje ok';
 });
 
 async function cargarProductosCache() {
@@ -488,16 +477,25 @@ function actualizarPreview() {
   $('#venta-preview').textContent = item ? `Subtotal: ${money(item.subtotal)}` : '';
 }
 
-$('#btn-agregar-item').addEventListener('click', () => {
+function agregarItemAlCarrito() {
   const item = calcularItemVenta();
   if (!item) {
     $('#venta-preview').textContent = 'Elegí producto, modalidad y una cantidad mayor a 0.';
-    return;
+    return false;
   }
   carrito.push(item);
   $('#venta-cantidad').value = '';
   $('#venta-preview').textContent = '';
   renderCarrito();
+  return true;
+}
+
+$('#btn-agregar-item').addEventListener('click', agregarItemAlCarrito);
+
+$('#venta-cantidad').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  if (agregarItemAlCarrito()) $('#venta-codigo-barras').focus();
 });
 
 function renderCarrito() {
@@ -1042,6 +1040,7 @@ $('#btn-previsualizar-precios').addEventListener('click', async (e) => {
 
 $('#btn-aplicar-precios').addEventListener('click', async (e) => {
   if (!preciosUltimaConsulta) return;
+  const boton = e.currentTarget; // se guarda antes del await: el evento ya no es válido después
   const ok = await confirmarAccion(
     'Los precios de la vista previa se van a actualizar ahora mismo. Esta acción no se puede deshacer automáticamente.',
     { titulo: 'Aplicar cambios de precio', textoConfirmar: 'Sí, aplicar cambios' }
@@ -1049,7 +1048,7 @@ $('#btn-aplicar-precios').addEventListener('click', async (e) => {
   if (!ok) return;
 
   const msg = $('#precios-mensaje');
-  await conCarga(e.currentTarget, 'Aplicando…', async () => {
+  await conCarga(boton, 'Aplicando…', async () => {
     const res = await fetch(`${API}/productos/actualizar-precios`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
