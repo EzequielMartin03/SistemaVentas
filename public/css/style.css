@@ -67,7 +67,7 @@ input:disabled, select:disabled { opacity: 0.55; cursor: not-allowed; }
   z-index: 20;
 }
 .brand { display: flex; align-items: center; gap: 0.7rem; }
-.brand-logo { height: 48px; width: auto; object-fit: contain; }
+.brand-logo { height: 72px; width: auto; object-fit: contain; }
 .login-logo { height: 110px; width: auto; object-fit: contain; display: block; margin: 0 auto 0.6rem; }
 
 /* NAV */
