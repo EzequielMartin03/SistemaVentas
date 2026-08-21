@@ -67,24 +67,8 @@ input:disabled, select:disabled { opacity: 0.55; cursor: not-allowed; }
   z-index: 20;
 }
 .brand { display: flex; align-items: center; gap: 0.7rem; }
-.brand-icon { width: 42px; height: 42px; flex-shrink: 0; object-fit: contain; }
-.brand-text { display: flex; flex-direction: column; line-height: 1.05; }
-.brand-line {
-  font-family: var(--font-display);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
-}
-.brand-line-1 {
-  color: var(--accent);
-  -webkit-text-stroke: 1.2px var(--text);
-  font-size: 1.15rem;
-}
-.brand-line-2 {
-  color: var(--text);
-  font-size: 0.85rem;
-  letter-spacing: 0.06em;
-}
+.brand-logo { height: 48px; width: auto; object-fit: contain; }
+.login-logo { height: 110px; width: auto; object-fit: contain; display: block; margin: 0 auto 0.6rem; }
 
 /* NAV */
 .tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; }
