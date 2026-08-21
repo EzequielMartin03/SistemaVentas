@@ -60,18 +60,19 @@ function generarEtiquetasPDF(productos, config) {
     doc.undash();
 
     if (nombreComercio) {
-      doc.fontSize(5).font('Helvetica').fillColor(COLOR_SUAVE)
-        .text(nombreComercio.toUpperCase(), x + 6, y + 4, { width: cardWidth - 12 });
+      doc.fontSize(4.5).font('Helvetica').fillColor(COLOR_SUAVE)
+        .text(nombreComercio.toUpperCase(), x + 6, y + 3, { width: cardWidth - 12 });
     }
 
-    doc.fontSize(7.5).font('Helvetica-Bold').fillColor(COLOR_TEXTO)
-      .text(tag.nombre, x + 6, y + 12, { width: cardWidth - 12, height: 10, ellipsis: true });
+    const nombreY = nombreComercio ? y + 9 : y + 5;
+    doc.fontSize(9.5).font('Helvetica-Bold').fillColor(COLOR_TEXTO)
+      .text(tag.nombre, x + 5, nombreY, { width: cardWidth - 10, height: 20, ellipsis: true });
 
-    doc.fontSize(15).font('Helvetica-Bold').fillColor(COLOR_PRIMARIO)
-      .text(money(tag.precio), x + 4, y + cardHeight / 2 - 6, { width: cardWidth - 8, align: 'center' });
+    doc.fontSize(32).font('Helvetica-Bold').fillColor(COLOR_PRIMARIO)
+      .text(money(tag.precio), x + 4, y + 31, { width: cardWidth - 8, align: 'center' });
 
     doc.fontSize(6).font('Helvetica').fillColor(COLOR_SUAVE)
-      .text(tag.etiqueta, x + 6, y + cardHeight - 11, { width: cardWidth - 12, align: 'center' });
+      .text(tag.etiqueta, x + 6, y + cardHeight - 10, { width: cardWidth - 12, align: 'center' });
   });
 
   return doc;
