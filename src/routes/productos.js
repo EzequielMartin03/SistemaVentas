@@ -78,9 +78,10 @@ router.get('/', async (req, res, next) => {
 
     const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
     const { rows } = await pool.query(
-      `SELECT p.*, c.nombre AS categoria_nombre
+      `SELECT p.*, c.nombre AS categoria_nombre, pr.nombre AS proveedor_nombre
        FROM productos p
        JOIN categorias c ON c.id = p.categoria_id
+       LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
        ${where}
        ORDER BY c.nombre, p.nombre`,
       params
@@ -95,8 +96,10 @@ router.get('/', async (req, res, next) => {
 router.get('/codigo/:codigo', async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT p.*, c.nombre AS categoria_nombre
-       FROM productos p JOIN categorias c ON c.id = p.categoria_id
+      `SELECT p.*, c.nombre AS categoria_nombre, pr.nombre AS proveedor_nombre
+       FROM productos p
+       JOIN categorias c ON c.id = p.categoria_id
+       LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
        WHERE p.codigo_barras = $1 AND p.activo = TRUE`,
       [req.params.codigo]
     );
@@ -110,8 +113,10 @@ router.get('/codigo/:codigo', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT p.*, c.nombre AS categoria_nombre
-       FROM productos p JOIN categorias c ON c.id = p.categoria_id
+      `SELECT p.*, c.nombre AS categoria_nombre, pr.nombre AS proveedor_nombre
+       FROM productos p
+       JOIN categorias c ON c.id = p.categoria_id
+       LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
        WHERE p.id = $1`,
       [req.params.id]
     );
@@ -125,7 +130,7 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     const {
-      nombre, categoria_id, codigo_barras = null,
+      nombre, categoria_id, codigo_barras = null, proveedor_id = null,
       vende_por_peso = false, costo_kg = null, margen_kg = 35,
       vende_por_bolsa = false, peso_bolsa_kg = null, costo_bolsa = null, margen_bolsa = 35,
       vende_por_unidad = false, costo_unidad = null, margen_unidad = 35,
@@ -143,14 +148,14 @@ router.post('/', async (req, res, next) => {
 
     const { rows } = await pool.query(
       `INSERT INTO productos (
-        nombre, categoria_id, codigo_barras,
+        nombre, categoria_id, codigo_barras, proveedor_id,
         vende_por_peso, costo_kg, margen_kg, precio_kg,
         vende_por_bolsa, peso_bolsa_kg, costo_bolsa, margen_bolsa, precio_bolsa,
         vende_por_unidad, costo_unidad, margen_unidad, precio_unidad
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
       RETURNING *`,
       [
-        nombre.trim(), categoria_id, codigo_barras || null,
+        nombre.trim(), categoria_id, codigo_barras || null, proveedor_id || null,
         vende_por_peso, costo_kg, margen_kg, precio_kg,
         vende_por_bolsa, peso_bolsa_kg, costo_bolsa, margen_bolsa, precio_bolsa,
         vende_por_unidad, costo_unidad, margen_unidad, precio_unidad,
@@ -159,7 +164,7 @@ router.post('/', async (req, res, next) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     if (err.code === '23514') return res.status(400).json({ error: 'Datos inconsistentes: ' + err.message });
-    if (err.code === '23503') return res.status(400).json({ error: 'La categoría indicada no existe.' });
+    if (err.code === '23503') return res.status(400).json({ error: 'La categoría o el proveedor indicado no existe.' });
     if (err.code === '23505') return res.status(400).json({ error: 'Ya existe un producto con ese código de barras.' });
     next(err);
   }
@@ -188,9 +193,10 @@ router.put('/:id', async (req, res, next) => {
     if (errores.length) return res.status(400).json({ errores });
 
     merged.codigo_barras = merged.codigo_barras || null;
+    merged.proveedor_id = merged.proveedor_id || null;
 
     const campos = [
-      'nombre', 'categoria_id', 'codigo_barras',
+      'nombre', 'categoria_id', 'codigo_barras', 'proveedor_id',
       'vende_por_peso', 'costo_kg', 'margen_kg', 'precio_kg',
       'vende_por_bolsa', 'peso_bolsa_kg', 'costo_bolsa', 'margen_bolsa', 'precio_bolsa',
       'vende_por_unidad', 'costo_unidad', 'margen_unidad', 'precio_unidad',
@@ -199,19 +205,136 @@ router.put('/:id', async (req, res, next) => {
 
     const { rows } = await pool.query(
       `UPDATE productos SET
-        nombre=$1, categoria_id=$2, codigo_barras=$3,
-        vende_por_peso=$4, costo_kg=$5, margen_kg=$6, precio_kg=$7,
-        vende_por_bolsa=$8, peso_bolsa_kg=$9, costo_bolsa=$10, margen_bolsa=$11, precio_bolsa=$12,
-        vende_por_unidad=$13, costo_unidad=$14, margen_unidad=$15, precio_unidad=$16,
-        activo=$17, actualizado_en=NOW()
-      WHERE id=$18 RETURNING *`,
+        nombre=$1, categoria_id=$2, codigo_barras=$3, proveedor_id=$4,
+        vende_por_peso=$5, costo_kg=$6, margen_kg=$7, precio_kg=$8,
+        vende_por_bolsa=$9, peso_bolsa_kg=$10, costo_bolsa=$11, margen_bolsa=$12, precio_bolsa=$13,
+        vende_por_unidad=$14, costo_unidad=$15, margen_unidad=$16, precio_unidad=$17,
+        activo=$18, actualizado_en=NOW()
+      WHERE id=$19 RETURNING *`,
       [...campos.map((c) => merged[c]), req.params.id]
     );
     res.json(rows[0]);
   } catch (err) {
     if (err.code === '23514') return res.status(400).json({ error: 'Datos inconsistentes: ' + err.message });
-    if (err.code === '23503') return res.status(400).json({ error: 'La categoría indicada no existe.' });
+    if (err.code === '23503') return res.status(400).json({ error: 'La categoría o el proveedor indicado no existe.' });
     if (err.code === '23505') return res.status(400).json({ error: 'Ya existe un producto con ese código de barras.' });
+    next(err);
+  }
+});
+
+const MODALIDADES_PRECIO = {
+  peso: { habilitado: 'vende_por_peso', precio: 'precio_kg', costo: 'costo_kg', margen: 'margen_kg', etiqueta: 'Precio por kg' },
+  bolsa: { habilitado: 'vende_por_bolsa', precio: 'precio_bolsa', costo: 'costo_bolsa', margen: 'margen_bolsa', etiqueta: 'Precio por bolsa' },
+  unidad: { habilitado: 'vende_por_unidad', precio: 'precio_unidad', costo: 'costo_unidad', margen: 'margen_unidad', etiqueta: 'Precio por unidad' },
+};
+
+// POST /api/productos/actualizar-precios
+// Con confirmar=false (o ausente) solo calcula y devuelve la previsualización,
+// sin tocar la base. Con confirmar=true aplica los cambios en una transacción.
+router.post('/actualizar-precios', async (req, res, next) => {
+  try {
+    const {
+      ambito, categoria_id, proveedor_id, producto_id,
+      modalidades, metodo, tipo, porcentaje, precio_manual,
+      confirmar,
+    } = req.body;
+
+    if (!['todos', 'categoria', 'proveedor', 'producto'].includes(ambito)) {
+      return res.status(400).json({ error: 'Elegí a qué productos aplicar el cambio.' });
+    }
+    if (!Array.isArray(modalidades) || !modalidades.length || modalidades.some((m) => !MODALIDADES_PRECIO[m])) {
+      return res.status(400).json({ error: 'Elegí al menos una modalidad de precio (peso, bolsa o unidad).' });
+    }
+    if (!['porcentaje', 'manual'].includes(metodo)) {
+      return res.status(400).json({ error: 'Elegí el método: porcentaje o precio manual.' });
+    }
+    if (metodo === 'manual' && (ambito !== 'producto' || modalidades.length !== 1)) {
+      return res.status(400).json({ error: 'El precio manual solo se puede aplicar a un producto y una sola modalidad a la vez.' });
+    }
+    if (metodo === 'porcentaje') {
+      if (!(Number(porcentaje) > 0)) return res.status(400).json({ error: 'Indicá un porcentaje mayor a 0.' });
+      if (!['aumento', 'descuento'].includes(tipo)) return res.status(400).json({ error: 'Indicá si es aumento o descuento.' });
+    }
+    if (metodo === 'manual' && !(Number(precio_manual) > 0)) {
+      return res.status(400).json({ error: 'Indicá un precio manual mayor a 0.' });
+    }
+
+    const condiciones = ['activo = TRUE'];
+    const params = [];
+    if (ambito === 'categoria') {
+      if (!categoria_id) return res.status(400).json({ error: 'Elegí una categoría.' });
+      params.push(categoria_id);
+      condiciones.push(`categoria_id = $${params.length}`);
+    } else if (ambito === 'proveedor') {
+      if (!proveedor_id) return res.status(400).json({ error: 'Elegí un proveedor.' });
+      params.push(proveedor_id);
+      condiciones.push(`proveedor_id = $${params.length}`);
+    } else if (ambito === 'producto') {
+      if (!producto_id) return res.status(400).json({ error: 'Elegí un producto.' });
+      params.push(producto_id);
+      condiciones.push(`id = $${params.length}`);
+    }
+
+    const dbClient = confirmar ? await pool.connect() : pool;
+    try {
+      if (confirmar) await dbClient.query('BEGIN');
+
+      const { rows: productos } = await dbClient.query(
+        `SELECT * FROM productos WHERE ${condiciones.join(' AND ')}${confirmar ? ' FOR UPDATE' : ''}`,
+        params
+      );
+
+      const items = [];
+      for (const producto of productos) {
+        for (const modalidad of modalidades) {
+          const campos = MODALIDADES_PRECIO[modalidad];
+          if (!producto[campos.habilitado]) continue;
+
+          const precioActual = Number(producto[campos.precio]);
+          let precioNuevo;
+          if (metodo === 'porcentaje') {
+            const factor = tipo === 'aumento' ? 1 + Number(porcentaje) / 100 : 1 - Number(porcentaje) / 100;
+            precioNuevo = Math.max(0, Number((precioActual * factor).toFixed(2)));
+          } else {
+            precioNuevo = Number(Number(precio_manual).toFixed(2));
+          }
+
+          items.push({
+            producto_id: producto.id,
+            nombre: producto.nombre,
+            modalidad,
+            etiqueta: campos.etiqueta,
+            precio_anterior: precioActual,
+            precio_nuevo: precioNuevo,
+          });
+
+          if (confirmar) {
+            const costo = producto[campos.costo] !== null ? Number(producto[campos.costo]) : null;
+            const margenNuevo = costo && costo > 0
+              ? Number((((precioNuevo - costo) / costo) * 100).toFixed(2))
+              : producto[campos.margen];
+            await dbClient.query(
+              `UPDATE productos SET ${campos.precio} = $1, ${campos.margen} = $2, actualizado_en = NOW() WHERE id = $3`,
+              [precioNuevo, margenNuevo, producto.id]
+            );
+          }
+        }
+      }
+
+      if (confirmar) await dbClient.query('COMMIT');
+
+      res.json({
+        aplicado: !!confirmar,
+        cantidad_productos: new Set(items.map((i) => i.producto_id)).size,
+        items,
+      });
+    } catch (err) {
+      if (confirmar) await dbClient.query('ROLLBACK');
+      throw err;
+    } finally {
+      if (confirmar) dbClient.release();
+    }
+  } catch (err) {
     next(err);
   }
 });

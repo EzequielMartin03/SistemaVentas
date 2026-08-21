@@ -13,6 +13,8 @@ let estadisticasModo = 'rango';
 let usuarioActual = null;
 let usuariosCache = [];
 let usuarioEditandoId = null;
+let proveedoresCache = [];
+let proveedorEditandoId = null;
 
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => ctx.querySelectorAll(sel);
@@ -56,6 +58,16 @@ function activarVista(vista) {
   if (vista === 'estadisticas') iniciarVistaEstadisticas();
   if (vista === 'ajustes') cargarAjustes();
   if (vista === 'usuarios') cargarUsuarios();
+  if (vista === 'proveedores') cargarProveedores();
+  if (vista === 'precios') iniciarVistaPrecios();
+  if (vista === 'etiquetas') iniciarVistaEtiquetas();
+}
+
+/* ---------- PROVEEDORES (compartido) ---------- */
+async function obtenerProveedores() {
+  const res = await fetch(`${API}/proveedores`);
+  proveedoresCache = await res.json();
+  return proveedoresCache;
 }
 
 /* ---------- AUTENTICACIÓN ---------- */
@@ -371,7 +383,7 @@ function actualizarModosVenta() {
 
   const opciones = [];
   if (p.vende_por_peso) opciones.push(`<option value="peso">Por peso (${money(p.precio_kg)}/kg)</option>`);
-  if (p.vende_por_bolsa) opciones.push(`<option value="bolsa">Bolsa de ${p.peso_bolsa_kg}kg (${money(p.precio_bolsa)})</option>`);
+  if (p.vende_por_bolsa) opciones.push(`<option value="bolsa">Bolsa de ${Number(p.peso_bolsa_kg)}kg (${money(p.precio_bolsa)})</option>`);
   if (p.vende_por_unidad) opciones.push(`<option value="unidad">Unidad (${money(p.precio_unidad)})</option>`);
   sel.innerHTML = opciones.join('');
   actualizarUnidadPesoVisible();
@@ -563,7 +575,7 @@ function renderFiltrosCategoriaProductos() {
 function precioTexto(p) {
   const partes = [];
   if (p.vende_por_peso) partes.push(`${money(p.precio_kg)}/kg`);
-  if (p.vende_por_bolsa) partes.push(`${money(p.precio_bolsa)}/bolsa (${p.peso_bolsa_kg}kg)`);
+  if (p.vende_por_bolsa) partes.push(`${money(p.precio_bolsa)}/bolsa (${Number(p.peso_bolsa_kg)}kg)`);
   if (p.vende_por_unidad) partes.push(`${money(p.precio_unidad)}/u`);
   return partes.join(' · ');
 }
@@ -623,10 +635,18 @@ async function poblarSelectCategoriasModal(seleccionarId) {
   if (seleccionarId) sel.value = seleccionarId;
 }
 
+async function poblarSelectProveedoresModal(seleccionarId) {
+  await obtenerProveedores();
+  const sel = $('#np-proveedor');
+  sel.innerHTML = '<option value="">Sin proveedor</option>' +
+    proveedoresCache.filter((p) => p.activo).map((p) => `<option value="${p.id}">${p.nombre}</option>`).join('');
+  sel.value = seleccionarId || '';
+}
+
 async function abrirModalProducto(id) {
   productoEditandoId = id;
   limpiarFormularioProducto();
-  await poblarSelectCategoriasModal();
+  await Promise.all([poblarSelectCategoriasModal(), poblarSelectProveedoresModal()]);
 
   if (id) {
     const p = productosCache.find((x) => x.id === id) || await (await fetch(`${API}/productos/${id}`)).json();
@@ -634,6 +654,7 @@ async function abrirModalProducto(id) {
     $('#np-nombre').value = p.nombre;
     $('#np-categoria').value = p.categoria_id;
     $('#np-codigo-barras').value = p.codigo_barras || '';
+    $('#np-proveedor').value = p.proveedor_id || '';
 
     $('#np-vende-peso').checked = p.vende_por_peso;
     $('#np-costo-kg').value = p.costo_kg ?? '';
@@ -704,6 +725,7 @@ $('#btn-guardar-producto').addEventListener('click', async () => {
     nombre: $('#np-nombre').value.trim(),
     categoria_id: Number($('#np-categoria').value),
     codigo_barras: $('#np-codigo-barras').value.trim() || null,
+    proveedor_id: $('#np-proveedor').value ? Number($('#np-proveedor').value) : null,
 
     vende_por_peso: vendePeso,
     costo_kg: vendePeso ? numOrNull('#np-costo-kg') : null,
@@ -742,6 +764,342 @@ $('#btn-guardar-producto').addEventListener('click', async () => {
   msg.className = 'mensaje ok';
   setTimeout(() => modal.classList.add('oculto'), 500);
   cargarProductos();
+});
+
+/* ---------- ACTUALIZAR PRECIOS ---------- */
+let preciosProductosCache = [];
+let preciosAmbito = 'todos';
+let preciosMetodo = 'porcentaje';
+let preciosTipo = 'aumento';
+let preciosUltimaConsulta = null;
+
+async function iniciarVistaPrecios() {
+  await Promise.all([obtenerCategorias(), obtenerProveedores()]);
+  const res = await fetch(`${API}/productos?activo=true`);
+  preciosProductosCache = await res.json();
+
+  $('#precios-categoria').innerHTML = categoriasCache.filter((c) => c.activa)
+    .map((c) => `<option value="${c.id}">${c.nombre}</option>`).join('');
+
+  const proveedoresActivos = proveedoresCache.filter((p) => p.activo);
+  $('#precios-proveedor').innerHTML = proveedoresActivos.length
+    ? proveedoresActivos.map((p) => `<option value="${p.id}">${p.nombre}</option>`).join('')
+    : '<option disabled>No hay proveedores cargados</option>';
+
+  poblarListaProductoPrecios();
+  $('#precios-resultado-wrap').classList.add('oculto');
+  $('#precios-mensaje').textContent = '';
+  preciosUltimaConsulta = null;
+}
+
+function poblarListaProductoPrecios(filtro = '') {
+  const sel = $('#precios-producto');
+  const texto = filtro.trim().toLowerCase();
+  const lista = preciosProductosCache.filter((p) => p.nombre.toLowerCase().includes(texto));
+  sel.innerHTML = lista.map((p) => `<option value="${p.id}">${p.nombre} — ${p.categoria_nombre}</option>`).join('')
+    || '<option disabled>Sin resultados</option>';
+}
+$('#precios-producto-buscar').addEventListener('input', (e) => poblarListaProductoPrecios(e.target.value));
+
+$$('#precios-ambito .toggle-opcion').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    $$('#precios-ambito .toggle-opcion').forEach((b) => b.classList.remove('activo'));
+    btn.classList.add('activo');
+    preciosAmbito = btn.dataset.ambito;
+    $('#precios-selector-categoria').classList.toggle('oculto', preciosAmbito !== 'categoria');
+    $('#precios-selector-proveedor').classList.toggle('oculto', preciosAmbito !== 'proveedor');
+    $('#precios-selector-producto').classList.toggle('oculto', preciosAmbito !== 'producto');
+    actualizarDisponibilidadManual();
+  });
+});
+
+$$('.precios-modalidad').forEach((chk) => chk.addEventListener('change', actualizarDisponibilidadManual));
+
+function modalidadesPreciosSeleccionadas() {
+  return $$('.precios-modalidad:checked').length
+    ? [...$$('.precios-modalidad:checked')].map((c) => c.value)
+    : [];
+}
+
+function actualizarDisponibilidadManual() {
+  const permiteManual = preciosAmbito === 'producto' && modalidadesPreciosSeleccionadas().length === 1;
+  $('#precios-opcion-manual').disabled = !permiteManual;
+  $('#precios-opcion-manual').classList.toggle('oculto', false);
+  if (!permiteManual && preciosMetodo === 'manual') {
+    $('#precios-metodo .toggle-opcion[data-metodo="porcentaje"]').click();
+  }
+}
+
+$$('#precios-metodo .toggle-opcion').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    if (btn.disabled) return;
+    $$('#precios-metodo .toggle-opcion').forEach((b) => b.classList.remove('activo'));
+    btn.classList.add('activo');
+    preciosMetodo = btn.dataset.metodo;
+    $('#precios-campos-porcentaje').classList.toggle('oculto', preciosMetodo !== 'porcentaje');
+    $('#precios-campos-manual').classList.toggle('oculto', preciosMetodo !== 'manual');
+  });
+});
+
+$$('#precios-tipo .toggle-opcion').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    $$('#precios-tipo .toggle-opcion').forEach((b) => b.classList.remove('activo'));
+    btn.classList.add('activo');
+    preciosTipo = btn.dataset.tipo;
+  });
+});
+
+function armarConsultaPrecios() {
+  const modalidades = modalidadesPreciosSeleccionadas();
+  const body = { ambito: preciosAmbito, modalidades, metodo: preciosMetodo };
+
+  if (preciosAmbito === 'categoria') body.categoria_id = Number($('#precios-categoria').value);
+  if (preciosAmbito === 'proveedor') body.proveedor_id = Number($('#precios-proveedor').value);
+  if (preciosAmbito === 'producto') body.producto_id = Number($('#precios-producto').value);
+
+  if (preciosMetodo === 'porcentaje') {
+    body.tipo = preciosTipo;
+    body.porcentaje = Number($('#precios-porcentaje').value);
+  } else {
+    body.precio_manual = Number($('#precios-manual-valor').value);
+  }
+  return body;
+}
+
+$('#btn-previsualizar-precios').addEventListener('click', async () => {
+  const msg = $('#precios-mensaje');
+  msg.textContent = '';
+  $('#precios-resultado-wrap').classList.add('oculto');
+
+  const body = armarConsultaPrecios();
+  if (!body.modalidades.length) {
+    msg.textContent = 'Tildá al menos un tipo de precio (kg, bolsa o unidad).';
+    msg.className = 'mensaje error';
+    return;
+  }
+
+  const res = await fetch(`${API}/productos/actualizar-precios`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...body, confirmar: false }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    msg.textContent = data.error || 'No se pudo calcular la previsualización.';
+    msg.className = 'mensaje error';
+    return;
+  }
+  preciosUltimaConsulta = body;
+
+  if (!data.items.length) {
+    msg.textContent = 'No hay productos que coincidan con estos filtros.';
+    msg.className = 'mensaje error';
+    return;
+  }
+
+  $('#tabla-precios-preview').innerHTML = data.items.map((it) => `
+    <tr>
+      <td>${it.nombre}</td>
+      <td>${it.etiqueta}</td>
+      <td>${money(it.precio_anterior)}</td>
+      <td class="ganancia-positiva">${money(it.precio_nuevo)}</td>
+    </tr>
+  `).join('');
+  msg.textContent = `${data.cantidad_productos} producto(s) van a cambiar de precio.`;
+  msg.className = 'mensaje ok';
+  $('#precios-resultado-wrap').classList.remove('oculto');
+});
+
+$('#btn-aplicar-precios').addEventListener('click', async () => {
+  if (!preciosUltimaConsulta) return;
+  if (!confirm('¿Confirmás aplicar estos cambios de precio? No se puede deshacer automáticamente.')) return;
+
+  const msg = $('#precios-mensaje');
+  const res = await fetch(`${API}/productos/actualizar-precios`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...preciosUltimaConsulta, confirmar: true }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    msg.textContent = data.error || 'No se pudieron aplicar los cambios.';
+    msg.className = 'mensaje error';
+    return;
+  }
+  msg.textContent = `Listo — se actualizaron ${data.cantidad_productos} producto(s).`;
+  msg.className = 'mensaje ok';
+  $('#precios-resultado-wrap').classList.add('oculto');
+  preciosUltimaConsulta = null;
+  iniciarVistaPrecios();
+});
+
+/* ---------- ETIQUETAS DE PRECIO ---------- */
+let etiquetasProductosCache = [];
+let etiquetasAmbito = 'todos';
+let etiquetasSeleccionados = new Set();
+
+async function iniciarVistaEtiquetas() {
+  await Promise.all([obtenerCategorias(), obtenerProveedores()]);
+  const res = await fetch(`${API}/productos?activo=true`);
+  etiquetasProductosCache = await res.json();
+
+  $('#etiquetas-categoria').innerHTML = categoriasCache.filter((c) => c.activa)
+    .map((c) => `<option value="${c.id}">${c.nombre}</option>`).join('');
+
+  const proveedoresActivos = proveedoresCache.filter((p) => p.activo);
+  $('#etiquetas-proveedor').innerHTML = proveedoresActivos.length
+    ? proveedoresActivos.map((p) => `<option value="${p.id}">${p.nombre}</option>`).join('')
+    : '<option disabled>No hay proveedores cargados</option>';
+
+  etiquetasSeleccionados = new Set();
+  renderListaEtiquetasSeleccion();
+  actualizarLinkEtiquetas();
+  $('#etiquetas-mensaje').textContent = '';
+}
+
+$$('#etiquetas-ambito .toggle-opcion').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    $$('#etiquetas-ambito .toggle-opcion').forEach((b) => b.classList.remove('activo'));
+    btn.classList.add('activo');
+    etiquetasAmbito = btn.dataset.ambito;
+    $('#etiquetas-selector-categoria').classList.toggle('oculto', etiquetasAmbito !== 'categoria');
+    $('#etiquetas-selector-proveedor').classList.toggle('oculto', etiquetasAmbito !== 'proveedor');
+    $('#etiquetas-selector-seleccion').classList.toggle('oculto', etiquetasAmbito !== 'seleccion');
+    actualizarLinkEtiquetas();
+  });
+});
+
+function renderListaEtiquetasSeleccion(filtro = '') {
+  const texto = filtro.trim().toLowerCase();
+  const lista = etiquetasProductosCache.filter((p) => p.nombre.toLowerCase().includes(texto));
+  const cont = $('#etiquetas-lista-productos');
+  cont.innerHTML = lista.length
+    ? lista.map((p) => `
+      <label class="chk-inline">
+        <input type="checkbox" class="etiquetas-chk-producto" value="${p.id}" ${etiquetasSeleccionados.has(p.id) ? 'checked' : ''} />
+        ${p.nombre} — ${p.categoria_nombre}
+      </label>
+    `).join('')
+    : '<p class="ayuda">Sin resultados.</p>';
+
+  $$('.etiquetas-chk-producto', cont).forEach((chk) => {
+    chk.addEventListener('change', () => {
+      const id = Number(chk.value);
+      if (chk.checked) etiquetasSeleccionados.add(id); else etiquetasSeleccionados.delete(id);
+      actualizarLinkEtiquetas();
+    });
+  });
+}
+$('#etiquetas-buscar').addEventListener('input', (e) => renderListaEtiquetasSeleccion(e.target.value));
+$('#etiquetas-categoria').addEventListener('change', actualizarLinkEtiquetas);
+$('#etiquetas-proveedor').addEventListener('change', actualizarLinkEtiquetas);
+
+function actualizarLinkEtiquetas() {
+  const params = new URLSearchParams({ ambito: etiquetasAmbito });
+  if (etiquetasAmbito === 'categoria') params.set('categoria_id', $('#etiquetas-categoria').value || '');
+  if (etiquetasAmbito === 'proveedor') params.set('proveedor_id', $('#etiquetas-proveedor').value || '');
+  if (etiquetasAmbito === 'seleccion') params.set('ids', [...etiquetasSeleccionados].join(','));
+  $('#btn-descargar-etiquetas').href = `${API}/etiquetas/pdf?${params.toString()}`;
+}
+
+$('#btn-descargar-etiquetas').addEventListener('click', (e) => {
+  const msg = $('#etiquetas-mensaje');
+  if (etiquetasAmbito === 'seleccion' && !etiquetasSeleccionados.size) {
+    e.preventDefault();
+    msg.textContent = 'Tildá al menos un producto de la lista.';
+    msg.className = 'mensaje error';
+    return;
+  }
+  msg.textContent = '';
+  actualizarLinkEtiquetas();
+});
+
+/* ---------- PROVEEDORES ---------- */
+async function cargarProveedores() {
+  await obtenerProveedores();
+  const tbody = $('#tabla-proveedores');
+  if (!proveedoresCache.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="vacio">No hay proveedores.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = proveedoresCache.map((p) => `
+    <tr>
+      <td>${p.nombre}</td>
+      <td>${p.contacto || '—'}</td>
+      <td>${p.telefono || '—'}</td>
+      <td>${p.activo ? 'Activo' : 'Inactivo'}</td>
+      <td>
+        <button class="btn-fila" data-accion="editar" data-id="${p.id}">Editar</button>
+        <button class="btn-fila ${p.activo ? 'peligro' : ''}" data-accion="toggle" data-id="${p.id}">${p.activo ? 'Desactivar' : 'Activar'}</button>
+      </td>
+    </tr>
+  `).join('');
+
+  $$('[data-accion="editar"]', tbody).forEach((btn) => {
+    btn.addEventListener('click', () => abrirModalProveedor(Number(btn.dataset.id)));
+  });
+  $$('[data-accion="toggle"]', tbody).forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const p = proveedoresCache.find((x) => x.id === Number(btn.dataset.id));
+      await fetch(`${API}/proveedores/${p.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activo: !p.activo }),
+      });
+      cargarProveedores();
+    });
+  });
+}
+
+const modalProveedor = $('#modal-proveedor');
+$('#btn-nuevo-proveedor').addEventListener('click', () => abrirModalProveedor(null));
+$('#cerrar-modal-proveedor').addEventListener('click', () => modalProveedor.classList.add('oculto'));
+
+function abrirModalProveedor(id) {
+  proveedorEditandoId = id;
+  $('#pv-mensaje').textContent = '';
+  const p = id ? proveedoresCache.find((x) => x.id === id) : null;
+
+  $('#modal-proveedor-titulo').textContent = p ? 'Editar proveedor' : 'Nuevo proveedor';
+  $('#pv-nombre').value = p ? p.nombre : '';
+  $('#pv-contacto').value = p ? (p.contacto || '') : '';
+  $('#pv-telefono').value = p ? (p.telefono || '') : '';
+  $('#pv-email').value = p ? (p.email || '') : '';
+  $('#pv-notas').value = p ? (p.notas || '') : '';
+  $('#pv-activo').checked = p ? p.activo : true;
+
+  modalProveedor.classList.remove('oculto');
+}
+
+$('#btn-guardar-proveedor').addEventListener('click', async () => {
+  const msg = $('#pv-mensaje');
+  const body = {
+    nombre: $('#pv-nombre').value.trim(),
+    contacto: $('#pv-contacto').value.trim(),
+    telefono: $('#pv-telefono').value.trim(),
+    email: $('#pv-email').value.trim(),
+    notas: $('#pv-notas').value.trim(),
+    activo: $('#pv-activo').checked,
+  };
+
+  const url = proveedorEditandoId ? `${API}/proveedores/${proveedorEditandoId}` : `${API}/proveedores`;
+  const method = proveedorEditandoId ? 'PUT' : 'POST';
+
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    msg.textContent = data.error || 'No se pudo guardar el proveedor.';
+    msg.className = 'mensaje error';
+    return;
+  }
+  msg.textContent = 'Proveedor guardado.';
+  msg.className = 'mensaje ok';
+  setTimeout(() => modalProveedor.classList.add('oculto'), 500);
+  cargarProveedores();
 });
 
 /* ---------- CATEGORÍAS ---------- */
