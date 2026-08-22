@@ -6,7 +6,7 @@ const router = express.Router();
 function calcularPrecio(costo, margen) {
   if (costo === null || costo === undefined || costo === '') return null;
   if (margen === null || margen === undefined || margen === '') return null;
-  return Number((Number(costo) * (1 + Number(margen) / 100)).toFixed(2));
+  return Math.ceil(Number(costo) * (1 + Number(margen) / 100));
 }
 
 function validarProducto(body, { esCreacion }) {
@@ -317,7 +317,7 @@ router.post('/actualizar-precios', async (req, res, next) => {
             precioNuevo = Math.max(0, Number((precioActual + delta).toFixed(2)));
           } else if (metodo === 'costo_margen') {
             if (costoActual === null || !(Number(producto[campos.margen]) >= 0)) { omitidos++; continue; }
-            precioNuevo = Number((costoActual * (1 + Number(producto[campos.margen]) / 100)).toFixed(2));
+            precioNuevo = Math.ceil(costoActual * (1 + Number(producto[campos.margen]) / 100));
           } else {
             precioNuevo = Number(Number(precio_manual).toFixed(2));
           }

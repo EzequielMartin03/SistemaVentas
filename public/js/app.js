@@ -864,15 +864,27 @@ function actualizarBloquesModalidad() {
 });
 
 function autocalcularPrecio(costoSel, margenSel, precioSel) {
-  const recalcular = () => {
+  // Costo o margen cambian -> se recalcula el precio de venta (redondeado
+  // siempre para arriba, al peso entero).
+  const desdeCostoMargen = () => {
     const costo = Number($(costoSel).value);
     const margen = Number($(margenSel).value);
     if (costo >= 0 && margen >= 0 && $(costoSel).value !== '' && $(margenSel).value !== '') {
-      $(precioSel).value = (costo * (1 + margen / 100)).toFixed(2);
+      $(precioSel).value = Math.ceil(costo * (1 + margen / 100));
     }
   };
-  $(costoSel).addEventListener('input', recalcular);
-  $(margenSel).addEventListener('input', recalcular);
+  // El precio de venta se edita a mano -> el margen se recalcula para
+  // reflejar ese precio (misma fórmula que costo+margen, al revés).
+  const desdePrecio = () => {
+    const costo = Number($(costoSel).value);
+    const precio = Number($(precioSel).value);
+    if (costo > 0 && $(precioSel).value !== '') {
+      $(margenSel).value = Number((((precio / costo) - 1) * 100).toFixed(2));
+    }
+  };
+  $(costoSel).addEventListener('input', desdeCostoMargen);
+  $(margenSel).addEventListener('input', desdeCostoMargen);
+  $(precioSel).addEventListener('input', desdePrecio);
 }
 autocalcularPrecio('#np-costo-kg', '#np-margen-kg', '#np-precio-kg');
 autocalcularPrecio('#np-costo-bolsa', '#np-margen-bolsa', '#np-precio-bolsa');
