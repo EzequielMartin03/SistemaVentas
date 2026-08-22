@@ -419,18 +419,20 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
 /* FORMS - VENTA */
 .panel-venta { display: grid; grid-template-columns: 360px 1fr; gap: 1.2rem; align-items: start; }
 
-/* En pantallas de escritorio, "Nueva venta" ocupa el resto del alto
-   disponible sin scroll de página. Tanto la lista de productos como el
-   carrito se estiran para usar todo ese alto y se desplazan solo ellos
-   por dentro si hace falta -el buscador, los pasos de modalidad/cantidad
-   y "Confirmar venta" quedan siempre a la vista, fijos arriba/abajo. */
+/* En pantallas de escritorio, la app es un "cascarón" de alto fijo: barra
+   arriba (tamaño natural) + contenido (el resto), calculado por el propio
+   flexbox del navegador -sin medir nada por JS ni adivinar un calc() con
+   constantes, que es frágil y se desalinea apenas cambia algo. El resto
+   de las vistas (Productos, Estadísticas, etc.) siguen scrolleando
+   normalmente adentro de ese contenido; "Nueva venta" ocupa ese alto
+   entero y hace que el carrito/la lista se desplacen por dentro. */
 @media (min-width: 761px) {
-  #vista-venta.activa {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - var(--topbar-h, 90px) - 4.6rem);
-    min-height: 420px;
-  }
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+  #topbar { flex-shrink: 0; }
+  #main-app { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+
+  #vista-venta.activa { display: flex; flex-direction: column; height: 100%; }
   #vista-venta .panel-venta { flex: 1 1 auto; min-height: 0; align-items: stretch; }
   #vista-venta .form-agregar { min-height: 0; }
   #vista-venta #venta-modo-wrap,

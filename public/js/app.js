@@ -102,16 +102,6 @@ window.fetch = async (...args) => {
   return res;
 };
 
-/* Mide el alto real de la barra superior para que la pantalla de "Nueva
-   venta" pueda ocupar exactamente el resto del viewport sin scroll de
-   página (el carrito se desplaza internamente si hace falta). */
-function actualizarAlturaTopbar() {
-  const alto = $('#topbar').offsetHeight;
-  if (alto) document.documentElement.style.setProperty('--topbar-h', `${alto}px`);
-}
-window.addEventListener('resize', actualizarAlturaTopbar);
-actualizarAlturaTopbar();
-
 /* ---------- NAVEGACIÓN ---------- */
 $$('.tab').forEach((tab) => {
   tab.addEventListener('click', () => {
@@ -211,7 +201,6 @@ function mostrarApp() {
   $('#main-app').classList.remove('oculto');
   $('#sesion-nombre').textContent = `${usuarioActual.nombre_completo} (${usuarioActual.rol === 'admin' ? 'Admin' : 'Cajero'})`;
   $$('.solo-admin').forEach((el) => el.classList.toggle('oculto', usuarioActual.rol !== 'admin'));
-  actualizarAlturaTopbar();
   activarVista('caja');
 }
 
@@ -414,13 +403,10 @@ function textoModo(it) {
 
 /* ---------- NUEVA VENTA ---------- */
 let ventaProductoId = null;
-let ventaFiltroCategoria = '';
 
 async function iniciarVistaVenta() {
   await Promise.all([obtenerCategorias(), cargarProductosCache(), obtenerConfiguracion()]);
   ventaProductoId = null;
-  ventaFiltroCategoria = '';
-  renderFiltrosCategoriaVenta();
   poblarListaVenta();
   carrito = [];
   renderCarrito();
@@ -428,26 +414,6 @@ async function iniciarVistaVenta() {
   $('#venta-buscar').value = '';
   $('#venta-codigo-mensaje').textContent = '';
   $('#venta-buscar').focus();
-}
-
-// Botones de categoría arriba de la lista: para que encontrar un producto
-// no dependa de escribir bien el nombre, se puede simplemente tocar la
-// categoría y elegir de una lista más corta.
-function renderFiltrosCategoriaVenta() {
-  const cont = $('#venta-filtros-categoria');
-  const categorias = categoriasCache.filter((c) => c.activa);
-  cont.innerHTML = ['<button type="button" class="filtro-categoria activo" data-cat="">Todas</button>']
-    .concat(categorias.map((c) => `<button type="button" class="filtro-categoria" data-cat="${c.id}">${c.nombre}</button>`))
-    .join('');
-
-  $$('.filtro-categoria', cont).forEach((btn) => {
-    btn.addEventListener('click', () => {
-      $$('.filtro-categoria', cont).forEach((b) => b.classList.remove('activo'));
-      btn.classList.add('activo');
-      ventaFiltroCategoria = btn.dataset.cat;
-      poblarListaVenta($('#venta-buscar').value);
-    });
-  });
 }
 
 // Si el producto SOLO vende por unidad (no por peso ni por bolsa), no hace
@@ -494,8 +460,6 @@ function seleccionarProductoParaVenta(producto) {
   }
 
   ventaProductoId = producto.id;
-  ventaFiltroCategoria = '';
-  $$('.filtro-categoria', $('#venta-filtros-categoria')).forEach((b) => b.classList.toggle('activo', !b.dataset.cat));
   $('#venta-buscar').value = '';
   poblarListaVenta();
 
@@ -552,13 +516,10 @@ async function cargarProductosCache() {
 
 function poblarListaVenta(filtro = '') {
   const texto = filtro.trim().toLowerCase();
-  let lista = ventaFiltroCategoria
-    ? productosCache.filter((p) => String(p.categoria_id) === ventaFiltroCategoria)
+  const lista = texto
+    ? productosCache.filter((p) =>
+        p.nombre.toLowerCase().includes(texto) || (p.codigo_barras || '').toLowerCase().includes(texto))
     : productosCache;
-  if (texto) {
-    lista = lista.filter((p) =>
-      p.nombre.toLowerCase().includes(texto) || (p.codigo_barras || '').toLowerCase().includes(texto));
-  }
 
   const cont = $('#venta-lista-productos');
   cont.innerHTML = lista.length
