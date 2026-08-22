@@ -419,29 +419,14 @@ async function iniciarVistaVenta() {
   carrito = [];
   renderCarrito();
   ultimaVentaConfirmada = null;
-  $('#venta-codigo-barras').value = '';
+  $('#venta-buscar').value = '';
   $('#venta-codigo-mensaje').textContent = '';
-  $('#venta-codigo-barras').focus();
+  $('#venta-buscar').focus();
 }
 
-$('#venta-codigo-barras').addEventListener('keydown', async (e) => {
-  if (e.key !== 'Enter') return;
-  e.preventDefault();
-  const input = e.target;
-  const codigo = input.value.trim();
-  const msg = $('#venta-codigo-mensaje');
-  if (!codigo) return;
-
-  const res = await fetch(`${API}/productos/codigo/${encodeURIComponent(codigo)}`);
-  input.value = '';
-
-  if (!res.ok) {
-    msg.textContent = 'No se encontró ningún producto con ese código.';
-    msg.className = 'ayuda mensaje error';
-    input.focus();
-    return;
-  }
-  const producto = await res.json();
+// Selecciona un producto (venga de escanear un código o de buscarlo por
+// nombre) y pasa directo a pedir la cantidad, igual en los dos casos.
+function seleccionarProductoParaVenta(producto) {
   if (!productosCache.some((p) => p.id === producto.id)) productosCache.push(producto);
 
   $('#venta-buscar').value = '';
@@ -457,8 +442,42 @@ $('#venta-codigo-barras').addEventListener('keydown', async (e) => {
   cantidadInput.select();
   actualizarPreview();
 
+  const msg = $('#venta-codigo-mensaje');
   msg.textContent = `${producto.nombre} — indicá la cantidad y presioná Enter para agregarlo.`;
   msg.className = 'ayuda mensaje ok';
+}
+
+// Un solo campo para escanear (lector de código de barras) o buscar por
+// nombre: al tipear se filtra la lista de abajo, y al presionar Enter
+// primero se prueba como código exacto y, si no matchea, se toma el
+// nombre (si hay un único resultado filtrado, se selecciona directo).
+$('#venta-buscar').addEventListener('keydown', async (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const input = e.target;
+  const texto = input.value.trim();
+  const msg = $('#venta-codigo-mensaje');
+  if (!texto) return;
+
+  const res = await fetch(`${API}/productos/codigo/${encodeURIComponent(texto)}`);
+  if (res.ok) {
+    seleccionarProductoParaVenta(await res.json());
+    return;
+  }
+
+  const textoBusqueda = texto.toLowerCase();
+  const coincidencias = productosCache.filter((p) => p.nombre.toLowerCase().includes(textoBusqueda));
+  if (coincidencias.length === 1) {
+    seleccionarProductoParaVenta(coincidencias[0]);
+    return;
+  }
+  if (coincidencias.length > 1) {
+    msg.textContent = 'Hay más de un producto que coincide: elegilo de la lista de abajo.';
+    msg.className = 'ayuda mensaje';
+    return;
+  }
+  msg.textContent = 'No se encontró ningún producto con ese nombre o código.';
+  msg.className = 'ayuda mensaje error';
 });
 
 async function cargarProductosCache() {
@@ -469,7 +488,10 @@ async function cargarProductosCache() {
 function poblarListaVenta(filtro = '') {
   const sel = $('#venta-producto');
   const texto = filtro.trim().toLowerCase();
-  const lista = productosCache.filter((p) => p.nombre.toLowerCase().includes(texto));
+  const lista = texto
+    ? productosCache.filter((p) =>
+        p.nombre.toLowerCase().includes(texto) || (p.codigo_barras || '').toLowerCase().includes(texto))
+    : productosCache;
   sel.innerHTML = lista.map((p) => `<option value="${p.id}">${p.nombre} — ${p.categoria_nombre}</option>`).join('')
     || '<option disabled>Sin resultados</option>';
   actualizarModosVenta();
@@ -569,7 +591,7 @@ $('#btn-agregar-item').addEventListener('click', agregarItemAlCarrito);
 $('#venta-cantidad').addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
   e.preventDefault();
-  if (agregarItemAlCarrito()) $('#venta-codigo-barras').focus();
+  if (agregarItemAlCarrito()) $('#venta-buscar').focus();
 });
 
 function renderCarrito() {
@@ -639,7 +661,7 @@ function mostrarModalVentaExito(venta) {
 
 function cerrarModalVentaExito() {
   $('#modal-venta-exito').classList.add('oculto');
-  $('#venta-codigo-barras').focus();
+  $('#venta-buscar').focus();
 }
 
 $('#ve-btn-imprimir').addEventListener('click', () => {
