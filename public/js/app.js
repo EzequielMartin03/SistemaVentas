@@ -102,11 +102,22 @@ window.fetch = async (...args) => {
   return res;
 };
 
+/* Mide el alto real de la barra superior para que la pantalla de "Nueva
+   venta" pueda ocupar exactamente el resto del viewport sin scroll de
+   página (el carrito se desplaza internamente si hace falta). */
+function actualizarAlturaTopbar() {
+  const alto = $('#topbar').offsetHeight;
+  if (alto) document.documentElement.style.setProperty('--topbar-h', `${alto}px`);
+}
+window.addEventListener('resize', actualizarAlturaTopbar);
+actualizarAlturaTopbar();
+
 /* ---------- NAVEGACIÓN ---------- */
 $$('.tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     activarVista(tab.dataset.vista);
     cerrarMenuMovil();
+    cerrarMenuCuenta();
   });
 });
 
@@ -125,6 +136,24 @@ $('#btn-menu-movil').addEventListener('click', () => {
   else abrirMenuMovil();
 });
 $('#menu-movil-fondo').addEventListener('click', cerrarMenuMovil);
+
+/* Menú de cuenta (Ajustes + Cerrar sesión) */
+function abrirMenuCuenta() {
+  $('#menu-cuenta-panel').classList.remove('oculto');
+  $('#btn-menu-cuenta').setAttribute('aria-expanded', 'true');
+}
+function cerrarMenuCuenta() {
+  $('#menu-cuenta-panel').classList.add('oculto');
+  $('#btn-menu-cuenta').setAttribute('aria-expanded', 'false');
+}
+$('#btn-menu-cuenta').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if ($('#menu-cuenta-panel').classList.contains('oculto')) abrirMenuCuenta();
+  else cerrarMenuCuenta();
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#menu-cuenta')) cerrarMenuCuenta();
+});
 
 async function activarVista(vista) {
   $$('.tab').forEach((t) => t.classList.toggle('activo', t.dataset.vista === vista));
@@ -182,6 +211,7 @@ function mostrarApp() {
   $('#main-app').classList.remove('oculto');
   $('#sesion-nombre').textContent = `${usuarioActual.nombre_completo} (${usuarioActual.rol === 'admin' ? 'Admin' : 'Cajero'})`;
   $$('.solo-admin').forEach((el) => el.classList.toggle('oculto', usuarioActual.rol !== 'admin'));
+  actualizarAlturaTopbar();
   activarVista('caja');
 }
 

@@ -119,14 +119,59 @@ input:disabled, select:disabled { opacity: 0.55; cursor: not-allowed; }
 .tab:hover { background: var(--primary-soft); color: var(--primary-dark); }
 .tab.activo { background: var(--primary); color: #fff; }
 
-.sesion-usuario {
+#sesion-nombre { font-weight: 600; }
+
+/* MENÚ DE CUENTA (Ajustes + Cerrar sesión, desplegable) */
+.menu-cuenta { position: relative; flex-shrink: 0; }
+.menu-cuenta-btn {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.4rem;
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+  font-family: var(--font-body);
   font-size: 0.85rem;
-  color: var(--text-soft);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
 }
-#sesion-nombre { font-weight: 600; color: var(--text); }
+.menu-cuenta-btn:hover { border-color: var(--primary); color: var(--primary-dark); }
+.menu-cuenta-caret { font-size: 0.7rem; color: var(--text-soft); }
+.menu-cuenta-panel {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 16px 28px rgba(32, 40, 33, 0.15);
+  display: flex;
+  flex-direction: column;
+  min-width: 170px;
+  padding: 0.4rem;
+  z-index: 25;
+}
+.menu-cuenta-panel.oculto { display: none; }
+.menu-cuenta-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.7rem;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+}
+.menu-cuenta-panel .tab.menu-cuenta-item { font-family: var(--font-body); font-weight: 500; border-radius: var(--radius-sm); }
+.menu-cuenta-item:hover { background: var(--primary-soft); color: var(--primary-dark); }
+.menu-cuenta-item.activo { background: var(--primary); color: #fff; }
+.menu-cuenta-salir { color: var(--danger); }
+.menu-cuenta-salir:hover { background: var(--danger-soft); color: var(--danger); }
 
 /* LOGIN */
 .pantalla-login {
@@ -373,6 +418,23 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
 
 /* FORMS - VENTA */
 .panel-venta { display: grid; grid-template-columns: 320px 1fr; gap: 1.2rem; align-items: start; }
+
+/* En pantallas de escritorio, "Nueva venta" ocupa el resto del alto
+   disponible sin scroll de página: si el carrito tiene muchos ítems,
+   se desplaza solo la tabla y "Confirmar venta" queda siempre a la vista. */
+@media (min-width: 761px) {
+  #vista-venta.activa {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--topbar-h, 90px) - 4.6rem);
+    min-height: 420px;
+  }
+  #vista-venta .panel-venta { flex: 1 1 auto; min-height: 0; }
+  #vista-venta .form-agregar { align-self: start; max-height: 100%; overflow-y: auto; }
+  #vista-venta .carrito-wrap { align-self: stretch; min-height: 0; }
+  #vista-venta .carrito-wrap .tabla-scroll { flex: 1 1 auto; overflow-y: auto; min-height: 60px; }
+  #vista-venta .carrito-footer { flex-shrink: 0; }
+}
 .form-agregar { display: flex; flex-direction: column; gap: 0.5rem; }
 .form-agregar label {
   font-size: 0.76rem;
@@ -893,10 +955,10 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
     padding: 0.8rem 0.9rem;
   }
 
-  .menu-movil-panel .sesion-usuario {
-    justify-content: space-between;
+  .menu-movil-panel .menu-cuenta {
     border-top: 1px solid var(--border);
     margin-top: 0.5rem;
     padding-top: 0.8rem;
   }
+  .menu-movil-panel .menu-cuenta-btn { width: 100%; justify-content: space-between; border: none; padding: 0.4rem 0.2rem; }
 }

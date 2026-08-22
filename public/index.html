@@ -53,13 +53,18 @@
       <button class="tab" data-vista="categorias">Categorías</button>
       <button class="tab" data-vista="proveedores">Proveedores</button>
       <button class="tab" data-vista="estadisticas">Estadísticas</button>
-      <button class="tab solo-admin" data-vista="ajustes">Ajustes</button>
       <button class="tab solo-admin" data-vista="usuarios">Usuarios</button>
     </nav>
 
-    <div class="sesion-usuario">
-      <span id="sesion-nombre"></span>
-      <button id="btn-cerrar-sesion" class="btn-fila">Cerrar sesión</button>
+    <div class="menu-cuenta" id="menu-cuenta">
+      <button type="button" class="menu-cuenta-btn" id="btn-menu-cuenta" aria-haspopup="true" aria-expanded="false">
+        <span id="sesion-nombre"></span>
+        <span class="menu-cuenta-caret">▾</span>
+      </button>
+      <div class="menu-cuenta-panel oculto" id="menu-cuenta-panel">
+        <button type="button" class="tab menu-cuenta-item solo-admin" data-vista="ajustes">⚙ Ajustes</button>
+        <button type="button" id="btn-cerrar-sesion" class="menu-cuenta-item menu-cuenta-salir">Cerrar sesión</button>
+      </div>
     </div>
   </div>
 </header>
