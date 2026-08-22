@@ -417,11 +417,13 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
 .filtro-categoria.activo { background: var(--primary); border-color: var(--primary); color: #fff; }
 
 /* FORMS - VENTA */
-.panel-venta { display: grid; grid-template-columns: 320px 1fr; gap: 1.2rem; align-items: start; }
+.panel-venta { display: grid; grid-template-columns: 360px 1fr; gap: 1.2rem; align-items: start; }
 
 /* En pantallas de escritorio, "Nueva venta" ocupa el resto del alto
-   disponible sin scroll de página: si el carrito tiene muchos ítems,
-   se desplaza solo la tabla y "Confirmar venta" queda siempre a la vista. */
+   disponible sin scroll de página. Tanto la lista de productos como el
+   carrito se estiran para usar todo ese alto y se desplazan solo ellos
+   por dentro si hace falta -el buscador, los pasos de modalidad/cantidad
+   y "Confirmar venta" quedan siempre a la vista, fijos arriba/abajo. */
 @media (min-width: 761px) {
   #vista-venta.activa {
     display: flex;
@@ -429,49 +431,61 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
     height: calc(100vh - var(--topbar-h, 90px) - 4.6rem);
     min-height: 420px;
   }
-  #vista-venta .panel-venta { flex: 1 1 auto; min-height: 0; }
-  #vista-venta .form-agregar { align-self: start; max-height: 100%; overflow-y: auto; }
-  #vista-venta .carrito-wrap { align-self: stretch; min-height: 0; }
+  #vista-venta .panel-venta { flex: 1 1 auto; min-height: 0; align-items: stretch; }
+  #vista-venta .form-agregar { min-height: 0; }
+  #vista-venta #venta-modo-wrap,
+  #vista-venta #btn-agregar-item { flex-shrink: 0; }
+  #vista-venta .carrito-wrap { min-height: 0; }
   #vista-venta .carrito-wrap .tabla-scroll { flex: 1 1 auto; overflow-y: auto; min-height: 60px; }
   #vista-venta .carrito-footer { flex-shrink: 0; }
 }
-.form-agregar { display: flex; flex-direction: column; gap: 0.5rem; }
+.form-agregar { display: flex; flex-direction: column; gap: 0.6rem; }
 
 /* Lista de productos para elegir en Nueva venta: filas grandes y claras
-   (nombre, categoría/marca y precio ya visibles) en vez del <select>
-   nativo chico de antes. */
-.venta-lista-productos { min-height: 120px; }
+   en vez del <select> nativo chico de antes. El nombre siempre va en su
+   propia línea (nunca compite por espacio con el precio, que puede ser
+   largo con varias modalidades), así nunca queda tapado o recortado. */
+.venta-lista-productos.lista-checks { max-height: none; }
+.venta-lista-productos { flex: 1 1 auto; min-height: 180px; }
 .venta-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  padding: 0.9rem 0.9rem;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.8rem 0.9rem;
   border-radius: var(--radius-sm);
+  border-left: 3px solid transparent;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
 }
 .venta-item + .venta-item { border-top: 1px solid var(--border); }
 .venta-item:hover { background: var(--bg); }
-.venta-item.activo { background: var(--primary-soft); }
-.venta-item-info { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.venta-item.activo { background: var(--primary-soft); border-left-color: var(--primary); }
 .venta-item-nombre {
-  font-size: 0.98rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.3;
+  overflow-wrap: break-word;
+}
+.venta-item-sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.7rem;
 }
 .venta-item-meta { font-size: 0.8rem; color: var(--text-soft); }
 .venta-item-precio {
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--primary-dark);
+  background: var(--primary-soft);
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
   white-space: nowrap;
-  flex-shrink: 0;
-  text-align: right;
 }
+.venta-item.activo .venta-item-precio { background: var(--card); }
+#venta-modo-wrap { border-top: 1px solid var(--border); padding-top: 0.6rem; margin-top: 0.2rem; }
 .form-agregar label {
   font-size: 0.76rem;
   font-weight: 600;
@@ -957,6 +971,7 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
   .panel-venta { grid-template-columns: 1fr; }
   main { padding: 1.2rem 1rem 3rem; }
   .fila-costo-margen { grid-template-columns: 1fr; }
+  .venta-lista-productos.lista-checks { max-height: 45vh; }
 
   /* Header: logo + hamburguesa en una fila; tabs y sesión se ocultan
      detrás del botón hasta que se abre el menú. */

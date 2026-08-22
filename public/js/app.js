@@ -564,11 +564,11 @@ function poblarListaVenta(filtro = '') {
   cont.innerHTML = lista.length
     ? lista.map((p) => `
       <div class="venta-item ${p.id === ventaProductoId ? 'activo' : ''}" data-id="${p.id}">
-        <div class="venta-item-info">
-          <span class="venta-item-nombre">${p.nombre}</span>
+        <span class="venta-item-nombre">${p.nombre}</span>
+        <div class="venta-item-sub">
           <span class="venta-item-meta">${p.categoria_nombre}${p.marca ? ' · ' + p.marca : ''}</span>
+          <span class="venta-item-precio">${precioTexto(p)}</span>
         </div>
-        <span class="venta-item-precio">${precioTexto(p)}</span>
       </div>
     `).join('')
     : '<p class="vacio">No hay productos que coincidan.</p>';
