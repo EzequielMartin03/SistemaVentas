@@ -299,6 +299,7 @@ router.post('/actualizar-precios', async (req, res, next) => {
       );
 
       const items = [];
+      const actualizaciones = [];
       let omitidos = 0;
       for (const producto of productos) {
         for (const modalidad of modalidades) {
@@ -335,14 +336,19 @@ router.post('/actualizar-precios', async (req, res, next) => {
             const margenNuevo = costoActual && costoActual > 0
               ? Number((((precioNuevo - costoActual) / costoActual) * 100).toFixed(2))
               : producto[campos.margen];
-            await dbClient.query(
+            // No se espera cada UPDATE uno por uno: se disparan todos sobre
+            // la misma conexión (node-postgres los encola de forma segura)
+            // y se esperan juntos al final, para no pagar la latencia de
+            // red de cada round-trip por separado en updates masivos.
+            actualizaciones.push(dbClient.query(
               `UPDATE productos SET ${campos.precio} = $1, ${campos.margen} = $2, actualizado_en = NOW() WHERE id = $3`,
               [precioNuevo, margenNuevo, producto.id]
-            );
+            ));
           }
         }
       }
 
+      if (confirmar) await Promise.all(actualizaciones);
       if (confirmar) await dbClient.query('COMMIT');
 
       res.json({

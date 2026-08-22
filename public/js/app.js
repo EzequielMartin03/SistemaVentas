@@ -160,7 +160,7 @@ async function activarVista(vista) {
   $$('.vista').forEach((v) => v.classList.toggle('activa', v.id === `vista-${vista}`));
 
   $('#vista-cargando').classList.remove('oculto');
-  const tiempoMinimo = new Promise((resolve) => setTimeout(resolve, 350));
+  const tiempoMinimo = new Promise((resolve) => setTimeout(resolve, 120));
   const carga = (async () => {
     if (vista === 'caja') await cargarCaja();
     else if (vista === 'venta') await iniciarVistaVenta();
@@ -424,10 +424,48 @@ async function iniciarVistaVenta() {
   $('#venta-buscar').focus();
 }
 
+// Si el producto SOLO vende por unidad (no por peso ni por bolsa), no hace
+// falta preguntar nada: escanearlo/tipearlo lo agrega directo a la venta,
+// y si ya estaba en el carrito simplemente le suma 1 a la cantidad. Peso y
+// bolsa quedan manuales (la cantidad/el peso cambia cada vez).
+function agregarOSumarUnidad(producto) {
+  const existente = carrito.find((it) => it.producto_id === producto.id && it.modo_venta === 'unidad');
+  const msg = $('#venta-codigo-mensaje');
+
+  if (existente) {
+    existente.cantidad += 1;
+    existente.subtotal = Number((existente.cantidad * existente.precio_unitario).toFixed(2));
+    msg.textContent = `${producto.nombre} — cantidad actualizada a ${existente.cantidad}.`;
+  } else {
+    carrito.push({
+      producto_id: producto.id,
+      nombre: producto.nombre,
+      modo_venta: 'unidad',
+      cantidad: 1,
+      precio_unitario: Number(producto.precio_unidad),
+      subtotal: Number(producto.precio_unidad),
+    });
+    msg.textContent = `${producto.nombre} agregado a la venta.`;
+  }
+  msg.className = 'ayuda mensaje ok';
+  renderCarrito();
+
+  $('#venta-buscar').value = '';
+  poblarListaVenta();
+  $('#venta-buscar').focus();
+}
+
 // Selecciona un producto (venga de escanear un código o de buscarlo por
-// nombre) y pasa directo a pedir la cantidad, igual en los dos casos.
+// nombre). Si vende solo por unidad se agrega directo (ver arriba); si
+// vende por peso y/o bolsa, se pasa a pedir la cantidad como hasta ahora.
 function seleccionarProductoParaVenta(producto) {
   if (!productosCache.some((p) => p.id === producto.id)) productosCache.push(producto);
+
+  const soloUnidad = producto.vende_por_unidad && !producto.vende_por_peso && !producto.vende_por_bolsa;
+  if (soloUnidad) {
+    agregarOSumarUnidad(producto);
+    return;
+  }
 
   $('#venta-buscar').value = '';
   poblarListaVenta();
