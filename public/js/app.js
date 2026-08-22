@@ -413,8 +413,14 @@ function textoModo(it) {
 }
 
 /* ---------- NUEVA VENTA ---------- */
+let ventaProductoId = null;
+let ventaFiltroCategoria = '';
+
 async function iniciarVistaVenta() {
   await Promise.all([obtenerCategorias(), cargarProductosCache(), obtenerConfiguracion()]);
+  ventaProductoId = null;
+  ventaFiltroCategoria = '';
+  renderFiltrosCategoriaVenta();
   poblarListaVenta();
   carrito = [];
   renderCarrito();
@@ -422,6 +428,26 @@ async function iniciarVistaVenta() {
   $('#venta-buscar').value = '';
   $('#venta-codigo-mensaje').textContent = '';
   $('#venta-buscar').focus();
+}
+
+// Botones de categoría arriba de la lista: para que encontrar un producto
+// no dependa de escribir bien el nombre, se puede simplemente tocar la
+// categoría y elegir de una lista más corta.
+function renderFiltrosCategoriaVenta() {
+  const cont = $('#venta-filtros-categoria');
+  const categorias = categoriasCache.filter((c) => c.activa);
+  cont.innerHTML = ['<button type="button" class="filtro-categoria activo" data-cat="">Todas</button>']
+    .concat(categorias.map((c) => `<button type="button" class="filtro-categoria" data-cat="${c.id}">${c.nombre}</button>`))
+    .join('');
+
+  $$('.filtro-categoria', cont).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      $$('.filtro-categoria', cont).forEach((b) => b.classList.remove('activo'));
+      btn.classList.add('activo');
+      ventaFiltroCategoria = btn.dataset.cat;
+      poblarListaVenta($('#venta-buscar').value);
+    });
+  });
 }
 
 // Si el producto SOLO vende por unidad (no por peso ni por bolsa), no hace
@@ -467,10 +493,11 @@ function seleccionarProductoParaVenta(producto) {
     return;
   }
 
+  ventaProductoId = producto.id;
+  ventaFiltroCategoria = '';
+  $$('.filtro-categoria', $('#venta-filtros-categoria')).forEach((b) => b.classList.toggle('activo', !b.dataset.cat));
   $('#venta-buscar').value = '';
   poblarListaVenta();
-  $('#venta-producto').value = String(producto.id);
-  actualizarModosVenta();
 
   // Nunca se agrega solo: siempre se pide la cantidad, así el cajero puede
   // cargar más de una unidad sin tener que corregir el carrito después.
@@ -524,23 +551,42 @@ async function cargarProductosCache() {
 }
 
 function poblarListaVenta(filtro = '') {
-  const sel = $('#venta-producto');
   const texto = filtro.trim().toLowerCase();
-  const lista = texto
-    ? productosCache.filter((p) =>
-        p.nombre.toLowerCase().includes(texto) || (p.codigo_barras || '').toLowerCase().includes(texto))
+  let lista = ventaFiltroCategoria
+    ? productosCache.filter((p) => String(p.categoria_id) === ventaFiltroCategoria)
     : productosCache;
-  sel.innerHTML = lista.map((p) => `<option value="${p.id}">${p.nombre} — ${p.categoria_nombre}</option>`).join('')
-    || '<option disabled>Sin resultados</option>';
+  if (texto) {
+    lista = lista.filter((p) =>
+      p.nombre.toLowerCase().includes(texto) || (p.codigo_barras || '').toLowerCase().includes(texto));
+  }
+
+  const cont = $('#venta-lista-productos');
+  cont.innerHTML = lista.length
+    ? lista.map((p) => `
+      <div class="venta-item ${p.id === ventaProductoId ? 'activo' : ''}" data-id="${p.id}">
+        <div class="venta-item-info">
+          <span class="venta-item-nombre">${p.nombre}</span>
+          <span class="venta-item-meta">${p.categoria_nombre}${p.marca ? ' · ' + p.marca : ''}</span>
+        </div>
+        <span class="venta-item-precio">${precioTexto(p)}</span>
+      </div>
+    `).join('')
+    : '<p class="vacio">No hay productos que coincidan.</p>';
+
+  $$('.venta-item', cont).forEach((el) => {
+    el.addEventListener('click', () => {
+      ventaProductoId = Number(el.dataset.id);
+      $$('.venta-item', cont).forEach((e) => e.classList.toggle('activo', e === el));
+      actualizarModosVenta();
+    });
+  });
   actualizarModosVenta();
 }
 
 $('#venta-buscar').addEventListener('input', (e) => poblarListaVenta(e.target.value));
-$('#venta-producto').addEventListener('change', actualizarModosVenta);
 
 function productoSeleccionado() {
-  const id = Number($('#venta-producto').value);
-  return productosCache.find((p) => p.id === id);
+  return productosCache.find((p) => p.id === ventaProductoId);
 }
 
 function actualizarModosVenta() {
