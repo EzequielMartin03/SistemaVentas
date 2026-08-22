@@ -432,7 +432,16 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
   #topbar { flex-shrink: 0; }
   #main-app { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
-  #vista-venta.activa { display: flex; flex-direction: column; height: 100%; }
+  /* Sin título propio (ya está la pestaña "Nueva venta") y recuperando
+     el padding vertical de <main> -normalmente aire de sobra para una
+     página que scrollea, pero acá cada pixel de alto cuenta. */
+  #vista-venta.activa {
+    display: flex;
+    flex-direction: column;
+    height: calc(100% + 4.6rem);
+    margin: -1.6rem 0 -3rem;
+    padding-top: 0.6rem;
+  }
   #vista-venta .panel-venta { flex: 1 1 auto; min-height: 0; align-items: stretch; }
   #vista-venta .form-agregar { min-height: 0; }
   #vista-venta #venta-modo-wrap,
@@ -441,14 +450,14 @@ main { padding: 1.6rem 1.8rem 3rem; max-width: 1100px; margin: 0 auto; }
   #vista-venta .carrito-wrap .tabla-scroll { flex: 1 1 auto; overflow-y: auto; min-height: 60px; }
   #vista-venta .carrito-footer { flex-shrink: 0; }
 }
-.form-agregar { display: flex; flex-direction: column; gap: 0.6rem; }
+.form-agregar { display: flex; flex-direction: column; gap: 0.5rem; }
 
 /* Lista de productos para elegir en Nueva venta: filas grandes y claras
    en vez del <select> nativo chico de antes. El nombre siempre va en su
    propia línea (nunca compite por espacio con el precio, que puede ser
    largo con varias modalidades), así nunca queda tapado o recortado. */
 .venta-lista-productos.lista-checks { max-height: none; }
-.venta-lista-productos { flex: 1 1 auto; min-height: 180px; }
+.venta-lista-productos { flex: 1 1 auto; min-height: 110px; }
 .venta-item {
   display: flex;
   flex-direction: column;
