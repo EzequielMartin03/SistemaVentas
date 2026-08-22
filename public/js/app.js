@@ -394,7 +394,7 @@ async function cargarCaja() {
 function capitalizar(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 function textoModo(it) {
-  if (it.modo_venta === 'kg') return `${it.cantidad} kg`;
+  if (it.modo_venta === 'kg') return `${Number(it.cantidad).toFixed(3)} kg`;
   if (it.modo_venta === 'g') return `${it.cantidad} g`;
   if (it.modo_venta === 'bolsa') return `${it.cantidad} bolsa${it.cantidad > 1 ? 's' : ''}`;
   return `${it.cantidad} u`;
@@ -588,14 +588,14 @@ function calcularItemVenta() {
 
   let modoVenta, precioUnitario, cantidad, subtotal;
   if (modoAlto === 'peso_monto') {
-    // El monto ingresado se usa solo para calcular cuántos kg pesar; el
-    // subtotal real sale de precio × esa cantidad (redondeada a gramos),
-    // igual que el servidor al confirmar -así el monto que se ve acá
-    // coincide con el que termina cobrándose (puede variar unos pesos
-    // respecto de lo pedido, como al pesar en la balanza real).
+    // La cantidad en kg se manda con toda su precisión decimal (no
+    // redondeada a gramos) para que, al recalcular el subtotal acá y en
+    // el servidor con precio × cantidad, dé exactamente el monto pedido
+    // y no unos pesos de más/de menos por el redondeo. Solo se redondea
+    // a gramos al mostrarla (ver actualizarPreview/textoModo).
     modoVenta = 'kg';
     precioUnitario = Number(p.precio_kg);
-    cantidad = Number((valor / precioUnitario).toFixed(3));
+    cantidad = valor / precioUnitario;
     subtotal = precioUnitario * cantidad;
   } else if (modoAlto === 'bolsa') {
     modoVenta = 'bolsa';
@@ -623,7 +623,7 @@ function actualizarPreview() {
   const item = calcularItemVenta();
   if (!item) { $('#venta-preview').textContent = ''; return; }
   $('#venta-preview').textContent = $('#venta-modo').value === 'peso_monto'
-    ? `≈ ${item.cantidad} kg — Subtotal: ${money(item.subtotal)}`
+    ? `≈ ${item.cantidad.toFixed(3)} kg — Subtotal: ${money(item.subtotal)}`
     : `Subtotal: ${money(item.subtotal)}`;
 }
 
