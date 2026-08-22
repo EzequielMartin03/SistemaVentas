@@ -556,20 +556,39 @@ function actualizarModosVenta() {
   if (!p) { sel.innerHTML = ''; $('#venta-preview').textContent = ''; return; }
 
   const opciones = [];
-  if (p.vende_por_peso) opciones.push(`<option value="peso">Por peso (${money(p.precio_kg)}/kg)</option>`);
+  if (p.vende_por_peso) {
+    opciones.push(`<option value="peso">Por peso (${money(p.precio_kg)}/kg)</option>`);
+    opciones.push('<option value="peso_monto">Por monto (ej: "$5.000 de esto")</option>');
+  }
   if (p.vende_por_bolsa) opciones.push(`<option value="bolsa">Bolsa de ${Number(p.peso_bolsa_kg)}kg (${money(p.precio_bolsa)})</option>`);
   if (p.vende_por_unidad) opciones.push(`<option value="unidad">Unidad (${money(p.precio_unidad)})</option>`);
   sel.innerHTML = opciones.join('');
   actualizarUnidadPesoVisible();
+  actualizarEtiquetaCantidad();
   actualizarPreview();
 }
 
-$('#venta-modo').addEventListener('change', () => { actualizarUnidadPesoVisible(); actualizarPreview(); });
+$('#venta-modo').addEventListener('change', () => {
+  actualizarUnidadPesoVisible();
+  actualizarEtiquetaCantidad();
+  actualizarPreview();
+});
 $('#venta-cantidad').addEventListener('input', actualizarPreview);
 
 function actualizarUnidadPesoVisible() {
   const esPeso = $('#venta-modo').value === 'peso';
   $('#venta-unidad-peso').classList.toggle('oculto', !esPeso);
+}
+
+// El cliente a veces pide "$5000 de balanceado" en vez de un peso: en ese
+// modo el campo pasa a ser un monto en pesos (con el $ de prefijo) en vez
+// de kg/gramos, y calcularItemVenta() se encarga de convertirlo a peso.
+function actualizarEtiquetaCantidad() {
+  const esMonto = $('#venta-modo').value === 'peso_monto';
+  $('#venta-cantidad-label').textContent = esMonto ? '¿Cuánto quiere gastar?' : 'Cantidad';
+  $('#venta-cantidad-wrap').classList.toggle('input-money', esMonto);
+  $('#venta-cantidad').step = esMonto ? '1' : '0.001';
+  $('#venta-cantidad').placeholder = esMonto ? 'Ej: 5000' : '0';
 }
 
 $$('#venta-unidad-peso .toggle-opcion').forEach((btn) => {
@@ -584,22 +603,35 @@ $$('#venta-unidad-peso .toggle-opcion').forEach((btn) => {
 function calcularItemVenta() {
   const p = productoSeleccionado();
   const modoAlto = $('#venta-modo').value;
-  const cantidad = Number($('#venta-cantidad').value);
-  if (!p || !modoAlto || !(cantidad > 0)) return null;
+  const valor = Number($('#venta-cantidad').value);
+  if (!p || !modoAlto || !(valor > 0)) return null;
 
-  let modoVenta, precioUnitario, cantidadKgEquivalente = null, subtotal;
+  let modoVenta, precioUnitario, cantidad, subtotal;
   if (modoAlto === 'peso') {
     modoVenta = unidadPesoSeleccionada;
     precioUnitario = Number(p.precio_kg);
-    cantidadKgEquivalente = modoVenta === 'g' ? cantidad / 1000 : cantidad;
+    cantidad = valor;
+    const cantidadKgEquivalente = modoVenta === 'g' ? cantidad / 1000 : cantidad;
     subtotal = precioUnitario * cantidadKgEquivalente;
+  } else if (modoAlto === 'peso_monto') {
+    // El monto ingresado se usa solo para calcular cuántos kg pesar; el
+    // subtotal real sale de precio × esa cantidad (redondeada a gramos),
+    // igual que el servidor al confirmar -así el monto que se ve acá
+    // coincide con el que termina cobrándose (puede variar unos pesos
+    // respecto de lo pedido, como al pesar en la balanza real).
+    modoVenta = 'kg';
+    precioUnitario = Number(p.precio_kg);
+    cantidad = Number((valor / precioUnitario).toFixed(3));
+    subtotal = precioUnitario * cantidad;
   } else if (modoAlto === 'bolsa') {
     modoVenta = 'bolsa';
     precioUnitario = Number(p.precio_bolsa);
+    cantidad = valor;
     subtotal = precioUnitario * cantidad;
   } else {
     modoVenta = 'unidad';
     precioUnitario = Number(p.precio_unidad);
+    cantidad = valor;
     subtotal = precioUnitario * cantidad;
   }
 
@@ -615,7 +647,10 @@ function calcularItemVenta() {
 
 function actualizarPreview() {
   const item = calcularItemVenta();
-  $('#venta-preview').textContent = item ? `Subtotal: ${money(item.subtotal)}` : '';
+  if (!item) { $('#venta-preview').textContent = ''; return; }
+  $('#venta-preview').textContent = $('#venta-modo').value === 'peso_monto'
+    ? `≈ ${item.cantidad} kg — Subtotal: ${money(item.subtotal)}`
+    : `Subtotal: ${money(item.subtotal)}`;
 }
 
 function agregarItemAlCarrito() {
